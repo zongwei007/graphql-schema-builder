@@ -1,5 +1,7 @@
 package com.ltsoft.graphql.types;
 
+import graphql.Scalars;
+import graphql.scalars.ExtendedScalars;
 import graphql.schema.Coercing;
 import graphql.schema.GraphQLScalarType;
 import org.hamcrest.Matchers;
@@ -10,6 +12,8 @@ import org.spf4j.test.log.LogAssert;
 import org.spf4j.test.log.TestLoggers;
 import org.spf4j.test.log.junit4.Spf4jTestLogJUnitRunner;
 import org.spf4j.test.matchers.LogMatchers;
+
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,7 +40,7 @@ public class ScalarTypeRepositoryTest {
             });
 
     @Test
-    public void register() {
+    public void testRegister() {
         ScalarTypeRepository repo = new ScalarTypeRepository();
         //noinspection unchecked
         LogAssert expect = TestLoggers.sys().expect(
@@ -47,7 +51,7 @@ public class ScalarTypeRepositoryTest {
 
         repo.register(HELLO);
 
-        assertThat(repo.get("Hello").isPresent()).isTrue();
+        assertThat(repo.getScalarType("Hello").isPresent()).isTrue();
 
         repo.register(HELLO);
 
@@ -55,12 +59,28 @@ public class ScalarTypeRepositoryTest {
     }
 
     @Test
-    public void getScalarType() {
+    public void testGetScalarType() {
         ScalarTypeRepository repo = new ScalarTypeRepository();
 
-        assertThat(repo.get("Instant"))
+        assertThat(repo.getScalarType("Instant"))
                 .isPresent()
                 .hasValue(ScalarTypes.GraphQLInstant);
-        assertThat(repo.get("UUID")).isPresent();
+        assertThat(repo.getScalarType("UUID")).isPresent();
+    }
+
+    @Test
+    public void testAllExtensionTypes() {
+        ScalarTypeRepository repo = new ScalarTypeRepository();
+
+        assertThat(repo.allExtensionTypes()).isNotEmpty();
+    }
+
+    @Test
+    public void testFindMappingScalarType() {
+        ScalarTypeRepository repo = new ScalarTypeRepository();
+
+        assertThat(repo.findMappingScalarType(String.class)).contains(Scalars.GraphQLString);
+        assertThat(repo.findMappingScalarType(UUID.class)).contains(ScalarTypes.GraphQLUUID);
+        assertThat(repo.findMappingScalarType(Object.class)).contains(ExtendedScalars.Object);
     }
 }

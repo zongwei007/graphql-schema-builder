@@ -1,40 +1,63 @@
 package com.ltsoft.graphql.types;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLScalarType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URI;
+import java.time.*;
+import java.util.*;
 
 public class ScalarTypeRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScalarTypeRepository.class);
 
-    private Map<String, GraphQLScalarType> scalarTypeMap = new ConcurrentHashMap<>();
+    private LoadingCache<Class<?>, GraphQLScalarType> MAPPING_CACHE = CacheBuilder.newBuilder()
+            .build(new ClassGraphQLScalarTypeCacheLoader());
+
+    private Map<String, GraphQLScalarType> scalarTypeMap = new HashMap<>();
+    private BiMap<Class<?>, GraphQLScalarType> javaTypeMap = HashBiMap.create();
 
     public ScalarTypeRepository() {
-        register(ExtendedScalars.Date);
-        register(ExtendedScalars.DateTime);
-        register(ExtendedScalars.Time);
         register(ExtendedScalars.Json);
         register(ExtendedScalars.Object);
         //ExtendedScalars.URL 类型依赖了 okhttp3，感觉太重了……
 
-        register(ScalarTypes.GraphQLUUID);
-        register(ScalarTypes.GraphQLURI);
-        register(ScalarTypes.GraphQLInstant);
-        register(ScalarTypes.GraphQLLocalTime);
-        register(ScalarTypes.GraphQLLocalDateTime);
-        register(ScalarTypes.GraphQLZonedDateTime);
-        register(ScalarTypes.GraphQLDuration);
-        register(ScalarTypes.GraphQLPeriod);
-        register(ScalarTypes.GraphQLYear);
-        register(ScalarTypes.GraphQLYearMonth);
+        register(LocalDate.class, ExtendedScalars.Date);
+        register(OffsetDateTime.class, ExtendedScalars.DateTime);
+        register(OffsetTime.class, ExtendedScalars.Time);
+
+        register(UUID.class, ScalarTypes.GraphQLUUID);
+        register(URI.class, ScalarTypes.GraphQLURI);
+        register(Instant.class, ScalarTypes.GraphQLInstant);
+        register(LocalTime.class, ScalarTypes.GraphQLLocalTime);
+        register(LocalDateTime.class, ScalarTypes.GraphQLLocalDateTime);
+        register(ZonedDateTime.class, ScalarTypes.GraphQLZonedDateTime);
+        register(Duration.class, ScalarTypes.GraphQLDuration);
+        register(Period.class, ScalarTypes.GraphQLPeriod);
+        register(Year.class, ScalarTypes.GraphQLYear);
+        register(YearMonth.class, ScalarTypes.GraphQLYearMonth);
+
+        //类型映射
+        mapping(Integer.class, Scalars.GraphQLInt);
+        mapping(Double.class, Scalars.GraphQLFloat);
+        mapping(String.class, Scalars.GraphQLString);
+        mapping(Boolean.class, Scalars.GraphQLBoolean);
+        mapping(Long.class, Scalars.GraphQLLong);
+        mapping(Short.class, Scalars.GraphQLShort);
+        mapping(Byte.class, Scalars.GraphQLByte);
+        mapping(BigInteger.class, Scalars.GraphQLBigInteger);
+        mapping(BigDecimal.class, Scalars.GraphQLBigDecimal);
+        mapping(Character.class, Scalars.GraphQLChar);
     }
 
     public ScalarTypeRepository register(GraphQLScalarType... types) {
@@ -46,12 +69,41 @@ public class ScalarTypeRepository {
         return this;
     }
 
-    public Optional<GraphQLScalarType> get(String name) {
+    public ScalarTypeRepository mapping(Class<?> sourceType, GraphQLScalarType scalarType) {
+        javaTypeMap.put(sourceType, scalarType);
+        return this;
+    }
+
+    public ScalarTypeRepository register(Class<?> sourceType, GraphQLScalarType scalarType) {
+        mapping(sourceType, scalarType);
+        register(scalarType);
+        return this;
+    }
+
+    public Optional<GraphQLScalarType> getScalarType(String name) {
         return Optional.ofNullable(scalarTypeMap.get(name));
+    }
+
+    public Optional<GraphQLScalarType> findMappingScalarType(Class<?> cls) {
+        return Optional.ofNullable(MAPPING_CACHE.getUnchecked(cls));
     }
 
     public Set<GraphQLScalarType> allExtensionTypes() {
         return new HashSet<>(scalarTypeMap.values());
     }
 
+    private class ClassGraphQLScalarTypeCacheLoader extends CacheLoader<Class<?>, GraphQLScalarType> {
+        @Override
+        public GraphQLScalarType load(Class<?> cls) {
+            if (javaTypeMap.containsKey(cls)) {
+                return javaTypeMap.get(cls);
+            }
+
+            return javaTypeMap.keySet().stream()
+                    .filter(parentCls -> parentCls.isAssignableFrom(cls))
+                    .findFirst()
+                    .map(parentType -> javaTypeMap.get(parentType))
+                    .orElse(ExtendedScalars.Object);
+        }
+    }
 }
