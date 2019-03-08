@@ -13,7 +13,7 @@ import static graphql.scalars.util.Kit.typeName;
 
 public class UriScalar extends GraphQLScalarType {
     public UriScalar() {
-        super("URI", "URI GraphQLName", new Coercing<URI, URI>() {
+        super("URI", "URI GraphQL ScalarType", new Coercing<URI, URI>() {
             @Override
             public URI serialize(Object input) throws CoercingSerializeException {
                 Optional<URI> uri;

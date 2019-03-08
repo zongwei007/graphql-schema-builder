@@ -20,8 +20,8 @@ public class YearMonthScalarTest {
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(YearMonth.of(2011, 10))).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo(SOURCE);
+        assertThat(scalar.getCoercing().serialize(YearMonth.of(2011, 10))).isEqualTo("2011-10");
+        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo("2011-10");
         assertThatExceptionOfType(CoercingSerializeException.class)
                 .isThrownBy(() -> scalar.getCoercing().serialize("2011-12-03"));
         assertThatExceptionOfType(CoercingSerializeException.class)

@@ -20,8 +20,8 @@ public class LocalDateTimeScalarTest {
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(LocalDateTime.of(2011, 12, 3, 10, 15))).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo(SOURCE);
+        assertThat(scalar.getCoercing().serialize(LocalDateTime.of(2011, 12, 3, 10, 15))).isEqualTo("2011-12-03T10:15:00");
+        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo("2011-12-03T10:15:00");
         assertThatExceptionOfType(CoercingSerializeException.class)
                 .isThrownBy(() -> scalar.getCoercing().serialize("2011-12-03"));
         assertThatExceptionOfType(CoercingSerializeException.class)

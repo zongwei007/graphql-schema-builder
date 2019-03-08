@@ -16,9 +16,9 @@ import static graphql.scalars.util.Kit.typeName;
 public class DurationScalar extends GraphQLScalarType {
 
     public DurationScalar() {
-        super("Duration", "JDK8 Duration GraphQLName", new Coercing<Duration, Duration>() {
+        super("Duration", "JDK8 Duration GraphQL ScalarType", new Coercing<Duration, String>() {
             @Override
-            public Duration serialize(Object input) {
+            public String serialize(Object input) {
                 Optional<Duration> duration;
 
                 if (input instanceof String) {
@@ -28,18 +28,18 @@ public class DurationScalar extends GraphQLScalarType {
                 }
 
                 if (duration.isPresent()) {
-                    return duration.get();
+                    return duration.get().toString();
                 }
 
                 throw new CoercingSerializeException(
-                        "Expected a 'Duration' like object but was '" + typeName(input) + "'."
+                        "Expected one of 'String' 'Integer' 'Long' 'TemporalAmount' but was '" + typeName(input) + "'."
                 );
             }
 
             @Override
             public Duration parseValue(Object input) {
                 if (input instanceof String) {
-                    return parseDuration(input, CoercingParseValueException::new);
+                    return parseDuration(input,  CoercingParseValueException::new);
                 }
 
                 Optional<Duration> duration = toDuration(input, CoercingParseValueException::new);

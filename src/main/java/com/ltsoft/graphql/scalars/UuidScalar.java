@@ -12,7 +12,7 @@ import static graphql.scalars.util.Kit.typeName;
 public class UuidScalar extends GraphQLScalarType {
 
     public UuidScalar() {
-        super("UUID", "UUID GraphQLName", new Coercing<UUID, UUID>() {
+        super("UUID", "UUID GraphQL ScalarType", new Coercing<UUID, UUID>() {
             @Override
             public UUID serialize(Object input) {
                 Optional<UUID> uuid;

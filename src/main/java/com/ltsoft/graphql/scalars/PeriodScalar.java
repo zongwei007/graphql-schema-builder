@@ -16,9 +16,9 @@ import static graphql.scalars.util.Kit.typeName;
 public class PeriodScalar extends GraphQLScalarType {
 
     public PeriodScalar() {
-        super("Period", "JDK8 Period GraphQLName", new Coercing<Period, Period>() {
+        super("Period", "JDK8 Period GraphQL ScalarType", new Coercing<Period, String>() {
             @Override
-            public Period serialize(Object input) {
+            public String serialize(Object input) {
                 Optional<Period> period;
 
                 if (input instanceof String) {
@@ -28,11 +28,11 @@ public class PeriodScalar extends GraphQLScalarType {
                 }
 
                 if (period.isPresent()) {
-                    return period.get();
+                    return period.get().toString();
                 }
 
                 throw new CoercingSerializeException(
-                        "Expected a 'Period' like object but was '" + typeName(input) + "'."
+                        "Expected a 'String' or 'TemporalAmount' or 'Integer' but was '" + typeName(input) + "'."
                 );
             }
 

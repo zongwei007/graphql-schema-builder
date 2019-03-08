@@ -5,6 +5,7 @@ import graphql.schema.*;
 
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.Optional;
@@ -15,9 +16,9 @@ import static graphql.scalars.util.Kit.typeName;
 public class LocalDateTimeScalar extends GraphQLScalarType {
 
     public LocalDateTimeScalar() {
-        super("LocalDateTime", "JDK8 LocalDateTime GraphQLName", new Coercing<LocalDateTime, LocalDateTime>() {
+        super("LocalDateTime", "JDK8 LocalDateTime GraphQLType", new Coercing<LocalDateTime, String>() {
             @Override
-            public LocalDateTime serialize(Object input) {
+            public String serialize(Object input) {
                 Optional<LocalDateTime> localDateTime;
 
                 if (input instanceof String) {
@@ -27,11 +28,11 @@ public class LocalDateTimeScalar extends GraphQLScalarType {
                 }
 
                 if (localDateTime.isPresent()) {
-                    return localDateTime.get();
+                    return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(localDateTime.get());
                 }
 
                 throw new CoercingSerializeException(
-                        "Expected a 'LocalDateTime' like object but was '" + typeName(input) + "'."
+                        "Expected a 'String' or 'TemporalAccessor' but was '" + typeName(input) + "'."
                 );
             }
 

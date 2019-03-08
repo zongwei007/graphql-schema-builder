@@ -6,6 +6,7 @@ import graphql.schema.*;
 
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.Optional;
@@ -16,9 +17,9 @@ import static graphql.scalars.util.Kit.typeName;
 public class InstantScalar extends GraphQLScalarType {
 
     public InstantScalar() {
-        super("Instant", "JDK8 Instant GraphQLName", new Coercing<Instant, Instant>() {
+        super("Instant", "JDK8 Instant GraphQL ScalarType", new Coercing<Instant, String>() {
             @Override
-            public Instant serialize(Object input) {
+            public String serialize(Object input) {
                 Optional<Instant> instant;
 
                 if (input instanceof String) {
@@ -28,11 +29,11 @@ public class InstantScalar extends GraphQLScalarType {
                 }
 
                 if (instant.isPresent()) {
-                    return instant.get();
+                    return DateTimeFormatter.ISO_INSTANT.format(instant.get());
                 }
 
                 throw new CoercingSerializeException(
-                        "Expected a 'Instant' like object but was '" + typeName(input) + "'."
+                        "Expected a 'String' or 'Long' but was '" + typeName(input) + "'."
                 );
             }
 

@@ -15,7 +15,7 @@ import static graphql.scalars.util.Kit.typeName;
 public class ZonedDateTimeScalar extends GraphQLScalarType {
 
     public ZonedDateTimeScalar() {
-        super("ZonedDateTime", "JDK8 ZonedDateTime GraphQLName", new Coercing<ZonedDateTime, ZonedDateTime>() {
+        super("ZonedDateTime", "JDK8 ZonedDateTime GraphQL ScalarType", new Coercing<ZonedDateTime, ZonedDateTime>() {
             @Override
             public ZonedDateTime serialize(Object input) {
                 Optional<ZonedDateTime> zonedDateTime;

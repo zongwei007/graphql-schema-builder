@@ -22,9 +22,9 @@ public class InstantScalarTest {
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(Instant.ofEpochMilli(SOURCE.toEpochMilli()))).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().serialize(Math.floorDiv(SOURCE.toEpochMilli(), 1000L))).isEqualTo(SOURCE);
+        assertThat(scalar.getCoercing().serialize(Instant.ofEpochMilli(SOURCE.toEpochMilli()))).isEqualTo("2011-12-03T10:15:30Z");
+        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo("2011-12-03T10:15:30Z");
+        assertThat(scalar.getCoercing().serialize(Math.floorDiv(SOURCE.toEpochMilli(), 1000L))).isEqualTo("2011-12-03T10:15:30Z");
         assertThatExceptionOfType(CoercingSerializeException.class)
                 .isThrownBy(() -> scalar.getCoercing().serialize("2011-12-03"));
         assertThatExceptionOfType(CoercingSerializeException.class)

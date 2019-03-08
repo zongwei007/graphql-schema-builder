@@ -22,9 +22,9 @@ public class PeriodScalarTest {
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(Period.parse(DAYS_15.toString()))).isEqualTo(DAYS_15);
-        assertThat(scalar.getCoercing().serialize(DAYS_15.toString())).isEqualTo(DAYS_15);
-        assertThat(scalar.getCoercing().serialize(DAYS_15.getDays())).isEqualTo(DAYS_15);
+        assertThat(scalar.getCoercing().serialize(Period.parse(DAYS_15.toString()))).isEqualTo("P15D");
+        assertThat(scalar.getCoercing().serialize(DAYS_15.toString())).isEqualTo("P15D");
+        assertThat(scalar.getCoercing().serialize(DAYS_15.getDays())).isEqualTo("P15D");
         assertThatExceptionOfType(CoercingSerializeException.class)
                 .isThrownBy(() -> scalar.getCoercing().serialize("15M"));
         assertThatExceptionOfType(CoercingSerializeException.class)

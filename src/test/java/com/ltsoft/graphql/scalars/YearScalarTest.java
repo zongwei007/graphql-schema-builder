@@ -21,9 +21,9 @@ public class YearScalarTest {
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(Year.of(2011))).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().serialize(2011)).isEqualTo(SOURCE);
+        assertThat(scalar.getCoercing().serialize(Year.of(2011))).isEqualTo(2011);
+        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo(2011);
+        assertThat(scalar.getCoercing().serialize(2011)).isEqualTo(2011);
         assertThatExceptionOfType(CoercingSerializeException.class)
                 .isThrownBy(() -> scalar.getCoercing().serialize("15M"));
         assertThatExceptionOfType(CoercingSerializeException.class)

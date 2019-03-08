@@ -16,9 +16,9 @@ import static graphql.scalars.util.Kit.typeName;
 public class YearScalar extends GraphQLScalarType {
 
     public YearScalar() {
-        super("Year", "JDK8 Year GraphQLName", new Coercing<Year, Year>() {
+        super("Year", "JDK8 Year GraphQL ScalarType", new Coercing<Year, Integer>() {
             @Override
-            public Year serialize(Object input) {
+            public Integer serialize(Object input) {
                 Optional<Year> year;
 
                 if (input instanceof String) {
@@ -28,11 +28,11 @@ public class YearScalar extends GraphQLScalarType {
                 }
 
                 if (year.isPresent()) {
-                    return year.get();
+                    return year.get().getValue();
                 }
 
                 throw new CoercingSerializeException(
-                        "Expected a 'Year' like object but was '" + typeName(input) + "'."
+                        "Expected a 'String' or 'TemporalAccessor' or 'Integer' but was '" + typeName(input) + "'."
                 );
             }
 

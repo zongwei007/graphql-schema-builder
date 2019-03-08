@@ -15,9 +15,9 @@ import static graphql.scalars.util.Kit.typeName;
 public class YearMonthScalar extends GraphQLScalarType {
 
     public YearMonthScalar() {
-        super("YearMonth", "JDK8 YearMonth GraphQLName", new Coercing<YearMonth, YearMonth>() {
+        super("YearMonth", "JDK8 YearMonth GraphQL ScalarType", new Coercing<YearMonth, String>() {
             @Override
-            public YearMonth serialize(Object input) {
+            public String serialize(Object input) {
                 Optional<YearMonth> yearMonth;
 
                 if (input instanceof String) {
@@ -27,11 +27,11 @@ public class YearMonthScalar extends GraphQLScalarType {
                 }
 
                 if (yearMonth.isPresent()) {
-                    return yearMonth.get();
+                    return yearMonth.get().toString();
                 }
 
                 throw new CoercingSerializeException(
-                        "Expected a 'YearMonth' like object but was '" + typeName(input) + "'."
+                        "Expected a 'String' or 'TemporalAccessor' but was '" + typeName(input) + "'."
                 );
             }
 

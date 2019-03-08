@@ -5,6 +5,7 @@ import graphql.schema.*;
 
 import java.time.DateTimeException;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.Optional;
@@ -15,9 +16,9 @@ import static graphql.scalars.util.Kit.typeName;
 public class LocalTimeScalar extends GraphQLScalarType {
 
     public LocalTimeScalar() {
-        super("LocalTime", "JDK8 LocalTime GraphQLName", new Coercing<LocalTime, LocalTime>() {
+        super("LocalTime", "JDK8 LocalTime GraphQL ScalarType", new Coercing<LocalTime, String>() {
             @Override
-            public LocalTime serialize(Object input) {
+            public String serialize(Object input) {
                 Optional<LocalTime> localTime;
 
                 if (input instanceof String) {
@@ -27,11 +28,11 @@ public class LocalTimeScalar extends GraphQLScalarType {
                 }
 
                 if (localTime.isPresent()) {
-                    return localTime.get();
+                    return DateTimeFormatter.ISO_LOCAL_TIME.format(localTime.get());
                 }
 
                 throw new CoercingSerializeException(
-                        "Expected a 'LocalTime' like object but was '" + typeName(input) + "'."
+                        "Expected a 'String' or 'TemporalAccessor' but was '" + typeName(input) + "'."
                 );
             }
 
@@ -68,7 +69,7 @@ public class LocalTimeScalar extends GraphQLScalarType {
         try {
             return LocalTime.parse(input);
         } catch (DateTimeParseException e) {
-            throw exceptionMaker.apply(e.getMessage());
+            throw exceptionMaker.apply("Invalid RFC3339 local time value : '" + input + "'. because of : '" + e.getMessage() + "'");
         }
     }
 

@@ -23,10 +23,10 @@ public class DurationScalarTest {
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(Duration.ofMinutes(15))).isEqualTo(MINUTES_15);
-        assertThat(scalar.getCoercing().serialize("PT15M")).isEqualTo(MINUTES_15);
-        assertThat(scalar.getCoercing().serialize(15L)).isEqualTo(SECONDS_15);
-        assertThat(scalar.getCoercing().serialize(15)).isEqualTo(SECONDS_15);
+        assertThat(scalar.getCoercing().serialize(Duration.ofMinutes(15))).isEqualTo("PT15M");
+        assertThat(scalar.getCoercing().serialize("PT15M")).isEqualTo("PT15M");
+        assertThat(scalar.getCoercing().serialize(15L)).isEqualTo("PT15S");
+        assertThat(scalar.getCoercing().serialize(15)).isEqualTo("PT15S");
         assertThatExceptionOfType(CoercingSerializeException.class)
                 .isThrownBy(() -> scalar.getCoercing().serialize("15M"));
         assertThatExceptionOfType(CoercingSerializeException.class)
