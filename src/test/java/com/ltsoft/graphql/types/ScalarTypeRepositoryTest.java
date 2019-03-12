@@ -81,6 +81,6 @@ public class ScalarTypeRepositoryTest {
 
         assertThat(repo.findMappingScalarType(String.class)).contains(Scalars.GraphQLString);
         assertThat(repo.findMappingScalarType(UUID.class)).contains(ScalarTypes.GraphQLUUID);
-        assertThat(repo.findMappingScalarType(Object.class)).contains(ExtendedScalars.Object);
+        assertThat(repo.findMappingScalarType(Object.class)).isNotPresent();
     }
 }

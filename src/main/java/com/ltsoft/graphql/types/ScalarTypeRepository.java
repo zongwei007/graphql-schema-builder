@@ -21,7 +21,7 @@ public class ScalarTypeRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScalarTypeRepository.class);
 
-    private LoadingCache<Class<?>, GraphQLScalarType> MAPPING_CACHE = CacheBuilder.newBuilder()
+    private LoadingCache<Class<?>, Optional<GraphQLScalarType>> MAPPING_CACHE = CacheBuilder.newBuilder()
             .build(new ClassGraphQLScalarTypeCacheLoader());
 
     private Map<String, GraphQLScalarType> scalarTypeMap = new HashMap<>();
@@ -85,25 +85,24 @@ public class ScalarTypeRepository {
     }
 
     public Optional<GraphQLScalarType> findMappingScalarType(Class<?> cls) {
-        return Optional.ofNullable(MAPPING_CACHE.getUnchecked(cls));
+        return MAPPING_CACHE.getUnchecked(cls);
     }
 
     public Set<GraphQLScalarType> allExtensionTypes() {
         return new HashSet<>(scalarTypeMap.values());
     }
 
-    private class ClassGraphQLScalarTypeCacheLoader extends CacheLoader<Class<?>, GraphQLScalarType> {
+    private class ClassGraphQLScalarTypeCacheLoader extends CacheLoader<Class<?>, Optional<GraphQLScalarType>> {
         @Override
-        public GraphQLScalarType load(Class<?> cls) {
+        public Optional<GraphQLScalarType> load(Class<?> cls) {
             if (javaTypeMap.containsKey(cls)) {
-                return javaTypeMap.get(cls);
+                return Optional.of(javaTypeMap.get(cls));
             }
 
             return javaTypeMap.keySet().stream()
                     .filter(parentCls -> parentCls.isAssignableFrom(cls))
                     .findFirst()
-                    .map(parentType -> javaTypeMap.get(parentType))
-                    .orElse(ExtendedScalars.Object);
+                    .map(parentType -> javaTypeMap.get(parentType));
         }
     }
 }
