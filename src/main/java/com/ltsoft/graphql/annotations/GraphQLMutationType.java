@@ -10,14 +10,14 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * 忽略 GraphQL 解析
+ * 指定某字段/方法在用作 Mutation 参数时的类型
  */
 @Documented
 @Retention(RUNTIME)
 @Target({METHOD, FIELD})
 @Inherited
-public @interface GraphQLIgnore {
+public @interface GraphQLMutationType {
 
-    Class<?>[] view() default {};
+    Class<?> value();
 
 }

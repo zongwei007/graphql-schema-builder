@@ -6,12 +6,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.util.function.Supplier;
 
-import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Documented
 @Retention(RUNTIME)
-@Target(PARAMETER)
+@Target({PARAMETER, FIELD, METHOD})
 @Inherited
 public @interface GraphQLDefaultValueFactory {
 

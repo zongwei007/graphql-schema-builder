@@ -1,9 +1,11 @@
 package com.ltsoft.graphql.resolver;
 
+import com.ltsoft.graphql.example.MutationService;
 import com.ltsoft.graphql.example.NormalObject;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLObjectType;
+import graphql.schema.GraphQLTypeReference;
 import graphql.schema.GraphQLTypeUtil;
 import org.junit.Test;
 
@@ -72,4 +74,52 @@ public class SchemaResolverTest {
                 });
     }
 
+    @Test
+    public void testGraphQLView() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        GraphQLObjectType objectType = schemaResolver.object(MutationService.class);
+
+        assertThat(objectType.getName()).isEqualTo("MutationService");
+
+        assertThat(objectType.getFieldDefinition("create"))
+                .isNotNull()
+                .satisfies(definition -> {
+                    assertThat(definition.getArguments()).hasSize(2);
+                    assertThat(definition.getArgument("name"))
+                            .isNotNull()
+                            .satisfies(argument -> {
+                                assertThat(argument.getType()).matches(GraphQLTypeUtil::isNonNull);
+                                assertThat(GraphQLTypeUtil.unwrapOne(argument.getType())).isEqualTo(Scalars.GraphQLString);
+                            });
+                    assertThat(definition.getArgument("parent"))
+                            .isNotNull()
+                            .satisfies(argument -> {
+                                assertThat(argument.getType()).isInstanceOf(GraphQLTypeReference.class);
+                                assertThat(argument.getType().getName()).isEqualTo("MutationInputObject");
+                            });
+                });
+
+        assertThat(objectType.getFieldDefinition("update"))
+                .isNotNull()
+                .satisfies(definition -> {
+                    assertThat(definition.getArguments()).hasSize(3);
+                    assertThat(definition.getArgument("id"))
+                            .isNotNull()
+                            .satisfies(argument -> {
+                                assertThat(argument.getType()).matches(GraphQLTypeUtil::isNonNull);
+                                assertThat(GraphQLTypeUtil.unwrapOne(argument.getType())).isEqualTo(Scalars.GraphQLLong);
+                            });
+                    assertThat(definition.getArgument("name"))
+                            .isNotNull()
+                            .satisfies(argument -> assertThat(argument.getType()).isEqualTo(Scalars.GraphQLString));
+                    assertThat(definition.getArgument("parent"))
+                            .isNotNull()
+                            .satisfies(argument -> {
+                                assertThat(argument.getType()).isInstanceOf(GraphQLTypeReference.class);
+                                assertThat(argument.getType().getName()).isEqualTo("MutationInputObject");
+                            });
+                });
+
+    }
 }

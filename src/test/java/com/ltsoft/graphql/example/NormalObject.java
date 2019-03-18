@@ -2,7 +2,6 @@ package com.ltsoft.graphql.example;
 
 import com.ltsoft.graphql.annotations.*;
 
-import javax.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -20,21 +19,17 @@ public class NormalObject {
     @GraphQLName("barList")
     private String[] bar;
 
-    @NotNull
+    @GraphQLNotNull
     private List<String> fooList;
 
-    @NotNull
+    @GraphQLNotNull
     @GraphQLDescription("GraphQL count field")
-    public Integer getCount(
-            @GraphQLArgument("cnd") @GraphQLDescription("A cnd argument") @GraphQLDefaultValue("1") @NotNull String cnd
-    ) {
+    public Integer getCount(@GraphQLArgument("cnd") @GraphQLDescription("A cnd argument") @GraphQLDefaultValue("1") @GraphQLNotNull String cnd) {
         return Integer.parseInt(cnd);
     }
 
-    @NotNull
-    public Set<OffsetDateTime> filterDateTimes(
-            @GraphQLArgument("args") @GraphQLDefaultValueFactory(OffsetDateTimeDefaultValue.class) @NotNull OffsetDateTime... args
-    ) {
+    @GraphQLNotNull
+    public Set<OffsetDateTime> filterDateTimes(@GraphQLArgument("args") @GraphQLDefaultValueFactory(OffsetDateTimeDefaultValue.class) @GraphQLNotNull OffsetDateTime... args) {
         return new HashSet<>(Arrays.asList(args));
     }
 
