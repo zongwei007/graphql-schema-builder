@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
+@GraphQLType
 @GraphQLName("Normal")
 @GraphQLDescription("Normal GraphQL Object")
 public class NormalObject {

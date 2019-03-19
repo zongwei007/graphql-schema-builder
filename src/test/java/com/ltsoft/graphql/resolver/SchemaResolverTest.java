@@ -1,12 +1,9 @@
 package com.ltsoft.graphql.resolver;
 
-import com.ltsoft.graphql.example.MutationService;
-import com.ltsoft.graphql.example.NormalObject;
+import com.ltsoft.graphql.example.*;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
-import graphql.schema.GraphQLObjectType;
-import graphql.schema.GraphQLTypeReference;
-import graphql.schema.GraphQLTypeUtil;
+import graphql.schema.*;
 import org.junit.Test;
 
 import java.time.OffsetDateTime;
@@ -120,6 +117,51 @@ public class SchemaResolverTest {
                                 assertThat(argument.getType().getName()).isEqualTo("MutationInputObject");
                             });
                 });
+    }
 
+    @Test
+    public void testGraphQLInput() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        GraphQLInputObjectType inputObject = schemaResolver.input(MutationInputObject.class);
+
+        assertThat(inputObject.getName()).isEqualTo("MutationInputObject");
+        assertThat(inputObject.getFieldDefinition("id"))
+                .isNotNull()
+                .satisfies(definition -> assertThat(definition.getType()).matches(GraphQLTypeUtil::isNonNull));
+    }
+
+    @Test
+    public void testGraphQLInterface() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        GraphQLInterfaceType interfaceType = schemaResolver.iface(NormalInterface.class);
+
+        assertThat(interfaceType.getName()).isEqualTo("NormalInterface");
+        assertThat(interfaceType.getTypeResolver()).isInstanceOf(DefaultTypeResolver.class);
+        assertThat(interfaceType.getFieldDefinition("info"))
+                .isNotNull()
+                .satisfies(definition -> {
+                    assertThat(definition.getType()).isEqualTo(Scalars.GraphQLString);
+                    assertThat(definition.getArguments()).hasSize(0);
+                });
+
+        GraphQLObjectType objectType = schemaResolver.object(NormalExtendObject.class);
+
+        assertThat(objectType.getName()).isEqualTo("NormalExtendObject");
+        assertThat(objectType.getInterfaces()).hasSize(1);
+        assertThat(objectType.getInterfaces().get(0).getName()).isEqualTo("NormalInterface");
+        assertThat(objectType.getFieldDefinition("info")).isNotNull();
+        assertThat(objectType.getFieldDefinition("data")).isNotNull();
+    }
+
+    @Test
+    public void testGraphQLUnion() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        GraphQLUnionType unionType = schemaResolver.union(UnionObject.class);
+
+        assertThat(unionType.getName()).isEqualTo("UnionObject");
+        assertThat(unionType.getTypes()).hasSize(2);
     }
 }
