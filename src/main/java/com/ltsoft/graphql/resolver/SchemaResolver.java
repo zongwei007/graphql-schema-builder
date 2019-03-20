@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -201,7 +202,7 @@ public class SchemaResolver {
      */
     private List<GraphQLFieldDefinition> resolveFields(Class<?> cls) {
         // field 不支持 ignore
-        return resolveClassExtensions(TypeToken.of(cls))
+        return resolveClassExtensions(TypeToken.of(cls), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
                 .flatMap(ele -> {
                     Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
                             .collect(Collectors.toMap(Field::getName, Function.identity()));
@@ -215,11 +216,11 @@ public class SchemaResolver {
     }
 
     /**
-     * 解析字段
+     * 解析 GraphQL Field
      *
-     * @param method
-     * @param field
-     * @return
+     * @param method 字段关联的方法
+     * @param field  字段同名的属性
+     * @return GraphQL Field 定义
      */
     private GraphQLFieldDefinition resolveField(Method method, Field field) {
         return GraphQLFieldDefinition.newFieldDefinition()
@@ -232,11 +233,11 @@ public class SchemaResolver {
     }
 
     /**
-     * 解析字段类型
+     * 解析 GraphQL Field 类型
      *
-     * @param method
-     * @param field
-     * @return
+     * @param method 字段关联的方法
+     * @param field  字段同名的属性
+     * @return GraphQL Field 类型
      */
     private GraphQLOutputType resolveFieldType(Method method, Field field) {
         Invokable<?, Object> invokable = Invokable.from(method);
@@ -252,10 +253,10 @@ public class SchemaResolver {
     }
 
     /**
-     * 解析方法参数
+     * 解析 GraphQL Field Arguments
      *
-     * @param method
-     * @return
+     * @param method 字段关联的方法
+     * @return GraphQL Field Arguments
      */
     private List<GraphQLArgument> resolveFieldArguments(Method method) {
         Class<?>[] views = Optional.ofNullable(method.getAnnotation(GraphQLView.class))
@@ -269,10 +270,11 @@ public class SchemaResolver {
     }
 
     /**
-     * 解析参数
+     * 解析 GraphQL Argument
      *
-     * @param parameter
-     * @return
+     * @param parameter 关联的参数
+     * @param views     当前 GraphQLView 信息
+     * @return GraphQL Argument
      */
     private Stream<GraphQLArgument> resolveFieldArgument(Parameter parameter, Class<?>[] views) {
         GraphQLInputType inputType = resolveArgumentType(parameter, views);
@@ -291,6 +293,13 @@ public class SchemaResolver {
         }
     }
 
+    /**
+     * 解析 GraphQL Argument 类型
+     *
+     * @param parameter 关联的参数
+     * @param views     当前 GraphQLView 信息
+     * @return GraphQL Argument 类型
+     */
     private GraphQLInputType resolveArgumentType(Parameter parameter, Class<?>[] views) {
         boolean isNotNull = isNotNull(parameter.getAnnotation(GraphQLNotNull.class), views);
         TypeToken<?> typeToken = TypeToken.of(parameter.getParameterizedType());
@@ -306,8 +315,15 @@ public class SchemaResolver {
                 }), isNotNull);
     }
 
+    /**
+     * 将输入参数无法识别为 GraphQL Input 的 Java 对象的 Field 参数进行拆解，转换为一组 GraphQL Argument
+     *
+     * @param parameter 关联的参数
+     * @param views     当前 GraphQLView 信息
+     * @return GraphQL Field Arguments
+     */
     private Stream<GraphQLArgument> resolveArgumentGroup(Parameter parameter, Class<?>[] views) {
-        return resolveClassExtensions(TypeToken.of(parameter.getParameterizedType()))
+        return resolveClassExtensions(TypeToken.of(parameter.getParameterizedType()), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
                 .flatMap(ele -> {
                     Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
                             .collect(Collectors.toMap(Field::getName, Function.identity()));
@@ -320,6 +336,14 @@ public class SchemaResolver {
                 });
     }
 
+    /**
+     * 将近似于 GraphQL Object 的 Java 对象的方法解析为输入参数
+     *
+     * @param method 关联的方法
+     * @param field  同名的字段
+     * @param views  当前 GraphQLView 信息
+     * @return GraphQL Field Arguments
+     */
     private Stream<GraphQLArgument> resolveFieldAsArgument(Method method, Field field, Class<?>[] views) {
         Parameter parameter = method.getParameters()[0];
         GraphQLIgnore ignore = Optional.ofNullable(field)
@@ -370,6 +394,39 @@ public class SchemaResolver {
         return Stream.of();
     }
 
+    /**
+     * 解析参数默认值
+     *
+     * @param parameter 关联参数
+     * @param type      参数类型
+     * @return 参数默认值
+     */
+    private Object resolveArgumentDefaultValue(Parameter parameter, GraphQLType type) {
+        return Optional.ofNullable(parameter.getAnnotation(GraphQLDefaultValue.class))
+                .map(GraphQLDefaultValue::value)
+                .map(str -> {
+                    if (type instanceof GraphQLScalarType) {
+                        return ((GraphQLScalarType) type).getCoercing().parseValue(str);
+                    }
+
+                    return str;
+                })
+                .orElseGet(() ->
+                        Optional.ofNullable(parameter.getAnnotation(GraphQLDefaultValueFactory.class))
+                                .map(GraphQLDefaultValueFactory::value)
+                                .map(cls -> instanceFactory.provide(cls).get())
+                                .orElse(null)
+                );
+    }
+
+    /**
+     * 字段映射为参数时，解析参数默认值
+     *
+     * @param method 关联的方法
+     * @param field  同名的字段
+     * @param type   字段类型
+     * @return 字段默认值
+     */
     private Object resolveFieldDefaultValue(Method method, Field field, GraphQLType type) {
         return Optional.ofNullable(
                 Optional.ofNullable(field)
@@ -412,42 +469,14 @@ public class SchemaResolver {
         });
     }
 
-    private Object resolveArgumentDefaultValue(Parameter parameter, GraphQLType type) {
-        return Optional.ofNullable(parameter.getAnnotation(GraphQLDefaultValue.class))
-                .map(GraphQLDefaultValue::value)
-                .map(str -> {
-                    if (type instanceof GraphQLScalarType) {
-                        return ((GraphQLScalarType) type).getCoercing().parseValue(str);
-                    }
-
-                    return str;
-                })
-                .orElseGet(() ->
-                        Optional.ofNullable(parameter.getAnnotation(GraphQLDefaultValueFactory.class))
-                                .map(GraphQLDefaultValueFactory::value)
-                                .map(cls -> instanceFactory.provide(cls).get())
-                                .orElse(null)
-                );
-    }
-
-    private Stream<Class<?>> resolveClassExtensions(TypeToken<?> typeToken) {
-        Set<Class<?>> objectExtensions = typeExtensions.getOrDefault(typeToken.getRawType(), Collections.emptySet());
-
-        Stream<? extends Class<?>> withParents = typeToken.getTypes().classes().stream()
-                .map(TypeToken::getRawType)
-                .filter(ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class));
-
-        Class<?>[] fieldExtensions = Optional.ofNullable(typeToken.getRawType().getAnnotation(GraphQLFieldExtension.class))
-                .map(GraphQLFieldExtension::value)
-                .orElse(new Class[0]);
-
-        return Stream.concat(objectExtensions.stream(), Stream.concat(withParents, Arrays.stream(fieldExtensions)));
-    }
-
+    /**
+     * 解析 GraphQL Input Object 字段描述
+     *
+     * @param cls 关联的类
+     * @return GraphQL Input Object 字段描述
+     */
     private List<GraphQLInputObjectField> resolveInputFields(Class<?> cls) {
-        return TypeToken.of(cls).getTypes().classes().stream()
-                .map(TypeToken::getRawType)
-                .filter(ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
+        return resolveClassExtensions(TypeToken.of(cls), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class) || ele.isAnnotationPresent(GraphQLInterface.class))
                 .flatMap(ele -> {
                     Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
                             .collect(Collectors.toMap(Field::getName, Function.identity()));
@@ -455,19 +484,48 @@ public class SchemaResolver {
                     // field 不支持 ignore
 
                     return Arrays.stream(ele.getMethods())
-                            .filter(method -> !SETTER_PREFIX.matcher(method.getName()).matches())    //忽略 setter
+                            .filter(method -> SETTER_PREFIX.matcher(method.getName()).matches())    //仅使用 setter
                             .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法;
                             .map(method -> resolveInputField(method, fieldNameMap.get(simplifyName(method.getName()))));
                 })
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 解析 GraphQL Input Object 字段描述
+     *
+     * @param method 关联的方法
+     * @param field  同名字段
+     * @return Input Object Field 描述
+     */
     private GraphQLInputObjectField resolveInputField(Method method, Field field) {
         return GraphQLInputObjectField.newInputObjectField()
                 .name(resolveFieldName(method, field))
                 .description(resolveFieldDescription(method, field))
                 .type(resolveInputFieldType(method, field))
                 .build();
+    }
+
+    /**
+     * 解析 Object 所有的扩展类型
+     *
+     * @param typeToken Object 类型信息
+     * @return 所有扩展类型信息
+     */
+    private Stream<Class<?>> resolveClassExtensions(TypeToken<?> typeToken, Predicate<Class<?>> filter) {
+        Stream<Class<?>> objectExtensions = typeToken.getTypes().stream()
+                .map(TypeToken::getRawType)
+                .flatMap(ele -> typeExtensions.getOrDefault(ele, Collections.emptySet()).stream());
+
+        Stream<? extends Class<?>> withParents = typeToken.getTypes().stream()
+                .map(TypeToken::getRawType)
+                .filter(filter);
+
+        Class<?>[] fieldExtensions = Optional.ofNullable(typeToken.getRawType().getAnnotation(GraphQLFieldExtension.class))
+                .map(GraphQLFieldExtension::value)
+                .orElse(new Class[0]);
+
+        return Stream.concat(objectExtensions, Stream.concat(withParents, Arrays.stream(fieldExtensions)));
     }
 
     private GraphQLInputType resolveInputFieldType(Method method, Field field) {
