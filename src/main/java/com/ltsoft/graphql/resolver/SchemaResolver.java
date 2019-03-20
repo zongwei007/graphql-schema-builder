@@ -125,6 +125,39 @@ public class SchemaResolver {
     }
 
     /**
+     * 解析 GraphQL Enum 类型
+     *
+     * @param cls 需要解析的类
+     * @return GraphQL Enum
+     */
+    public GraphQLEnumType enumeration(Class<?> cls) {
+        checkArgument(cls.isEnum());
+        checkArgument(cls.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class));
+
+        GraphQLEnumType.Builder builder = GraphQLEnumType.newEnum()
+                .name(resolveTypeName(cls))
+                .description(resolveTypeDescription(cls));
+
+        Field[] fields = cls.getFields();
+        Object[] constants = cls.getEnumConstants();
+
+        for (int i = 0; i < fields.length; i++) {
+            Field field = fields[i];
+            Object value = constants[i];
+            String description = Optional.ofNullable(field.getAnnotation(GraphQLDescription.class))
+                    .map(GraphQLDescription::value)
+                    .orElse(null);
+            String deprecate = Optional.ofNullable(field.getAnnotation(GraphQLDeprecate.class))
+                    .map(GraphQLDeprecate::value)
+                    .orElse(null);
+
+            builder.value(field.getName(), value, description, deprecate);
+        }
+
+        return builder.build();
+    }
+
+    /**
      * 解析 GraphQL 字段描述
      *
      * @param cls 需要解析的类

@@ -164,4 +164,16 @@ public class SchemaResolverTest {
         assertThat(unionType.getName()).isEqualTo("UnionObject");
         assertThat(unionType.getTypes()).hasSize(2);
     }
+
+    @Test
+    public void testGraphQLEnum() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        GraphQLEnumType enumObject = schemaResolver.enumeration(EnumObject.class);
+
+        assertThat(enumObject.getName()).isEqualTo("EnumObject");
+        assertThat(enumObject.getValue("first"))
+                .isNotNull()
+                .satisfies(definition -> assertThat(definition.getDescription()).isEqualTo("GraphQL Enum first"));
+    }
 }
