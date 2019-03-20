@@ -1,5 +1,6 @@
 package com.ltsoft.graphql.resolver;
 
+import com.ltsoft.graphql.annotations.GraphQLType;
 import com.ltsoft.graphql.example.*;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
@@ -13,6 +14,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SchemaResolverTest {
 
     @Test
+    public void testScalars() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        schemaResolver.scalar(HelloObjectScalar.class, HelloObject.class);
+
+        assertThat(schemaResolver.getTypeRepository().findMappingScalarType(HelloObject.class))
+                .containsInstanceOf(HelloObjectScalar.class);
+    }
+
+    @Test
     public void testNormalObject() {
         SchemaResolver schemaResolver = new SchemaResolver();
 
@@ -20,6 +31,7 @@ public class SchemaResolverTest {
 
         assertThat(objectType.getName()).isEqualTo("Normal");
         assertThat(objectType.getDescription()).isEqualTo("Normal GraphQL Object");
+        assertThat(objectType.getFieldDefinitions()).hasSize(5);
         assertThat(objectType.getFieldDefinition("foo"))
                 .isNotNull()
                 .satisfies(definition -> {
@@ -78,7 +90,7 @@ public class SchemaResolverTest {
         GraphQLObjectType objectType = schemaResolver.object(MutationService.class);
 
         assertThat(objectType.getName()).isEqualTo("MutationService");
-
+        assertThat(objectType.getFieldDefinitions()).hasSize(3);
         assertThat(objectType.getFieldDefinition("create"))
                 .isNotNull()
                 .satisfies(definition -> {
@@ -120,12 +132,40 @@ public class SchemaResolverTest {
     }
 
     @Test
+    public void testObjectExtension() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        schemaResolver.extension(NormalObjectExtension.class);
+
+        GraphQLObjectType objectType = schemaResolver.object(NormalObject.class);
+
+        assertThat(objectType.getName()).isEqualTo("Normal");
+        assertThat(objectType.getFieldDefinitions()).hasSize(6);
+        assertThat(objectType.getFieldDefinition("foobar").getDescription()).isEqualTo("A foobar field");
+    }
+
+    @Test
+    public void testObjectFieldExtension() {
+        SchemaResolver schemaResolver = new SchemaResolver();
+
+        GraphQLObjectType objectType = schemaResolver.object(ObjectWithExtension.class);
+
+        assertThat(objectType.getFieldDefinitions()).hasSize(1);
+        assertThat(objectType.getFieldDefinition("doSomething"))
+                .isNotNull()
+                .matches(GraphQLFieldDefinition::isDeprecated);
+    }
+
+    @Test
     public void testGraphQLInput() {
         SchemaResolver schemaResolver = new SchemaResolver();
+
+        assertThat(MutationInputObject.class.isAnnotationPresent(GraphQLType.class)).isFalse();
 
         GraphQLInputObjectType inputObject = schemaResolver.input(MutationInputObject.class);
 
         assertThat(inputObject.getName()).isEqualTo("MutationInputObject");
+        assertThat(inputObject.getFieldDefinitions()).hasSize(3);
         assertThat(inputObject.getFieldDefinition("id"))
                 .isNotNull()
                 .satisfies(definition -> assertThat(definition.getType()).matches(GraphQLTypeUtil::isNonNull));
@@ -139,6 +179,7 @@ public class SchemaResolverTest {
 
         assertThat(interfaceType.getName()).isEqualTo("NormalInterface");
         assertThat(interfaceType.getTypeResolver()).isInstanceOf(DefaultTypeResolver.class);
+        assertThat(interfaceType.getFieldDefinitions()).hasSize(1);
         assertThat(interfaceType.getFieldDefinition("info"))
                 .isNotNull()
                 .satisfies(definition -> {
@@ -146,9 +187,9 @@ public class SchemaResolverTest {
                     assertThat(definition.getArguments()).hasSize(0);
                 });
 
-        GraphQLObjectType objectType = schemaResolver.object(NormalExtendObject.class);
+        GraphQLObjectType objectType = schemaResolver.object(NormalInterfaceImpl.class);
 
-        assertThat(objectType.getName()).isEqualTo("NormalExtendObject");
+        assertThat(objectType.getName()).isEqualTo("NormalInterfaceImpl");
         assertThat(objectType.getInterfaces()).hasSize(1);
         assertThat(objectType.getInterfaces().get(0).getName()).isEqualTo("NormalInterface");
         assertThat(objectType.getFieldDefinition("info")).isNotNull();
@@ -172,6 +213,7 @@ public class SchemaResolverTest {
         GraphQLEnumType enumObject = schemaResolver.enumeration(EnumObject.class);
 
         assertThat(enumObject.getName()).isEqualTo("EnumObject");
+        assertThat(enumObject.getValues()).hasSize(2);
         assertThat(enumObject.getValue("first"))
                 .isNotNull()
                 .satisfies(definition -> assertThat(definition.getDescription()).isEqualTo("GraphQL Enum first"));

@@ -3,7 +3,7 @@ package com.ltsoft.graphql.example;
 import com.ltsoft.graphql.annotations.GraphQLType;
 
 @GraphQLType
-public class NormalExtendObject implements NormalInterface {
+public class NormalInterfaceImpl implements NormalInterface {
 
     private String data;
 

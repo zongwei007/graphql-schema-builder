@@ -12,10 +12,7 @@ import graphql.schema.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -30,16 +27,37 @@ public class SchemaResolver {
 
     private static Pattern SETTER_PREFIX = Pattern.compile("^set[A-Z]?\\S*");
 
-    private final ScalarTypeRepository typeRepository;
     private final ServiceInstanceFactory instanceFactory;
+    private final ScalarTypeRepository typeRepository = new ScalarTypeRepository();
+    private final Map<Class<?>, Set<Class<?>>> typeExtensions = new HashMap<>();
 
     public SchemaResolver() {
-        this(new ScalarTypeRepository(), new DefaultServiceInstanceFactory());
+        this(new DefaultServiceInstanceFactory());
     }
 
-    public SchemaResolver(ScalarTypeRepository typeRepository, ServiceInstanceFactory instanceFactory) {
-        this.typeRepository = typeRepository;
+    public SchemaResolver(ServiceInstanceFactory instanceFactory) {
         this.instanceFactory = instanceFactory;
+    }
+
+    public SchemaResolver scalar(Class<? extends GraphQLScalarType> cls, Class<?> javaType) {
+        checkArgument(GraphQLScalarType.class.isAssignableFrom(cls));
+        GraphQLScalarType provide = instanceFactory.provide(cls);
+
+        return scalar(provide, javaType);
+    }
+
+    public SchemaResolver scalar(GraphQLScalarType scalarType, Class<?> javaType) {
+        typeRepository.mapping(javaType, scalarType);
+        return this;
+    }
+
+    public SchemaResolver extension(Class<?> cls) {
+        checkArgument(cls.isAnnotationPresent(GraphQLTypeExtension.class));
+
+        Class<?> targetClass = cls.getAnnotation(GraphQLTypeExtension.class).value();
+        typeExtensions.computeIfAbsent(targetClass, key -> new HashSet<>()).add(cls);
+
+        return this;
     }
 
     /**
@@ -89,10 +107,19 @@ public class SchemaResolver {
                 .map(instanceFactory::provide)
                 .get();
 
+        List<GraphQLFieldDefinition> fields = TypeToken.of(cls).getTypes().interfaces().stream()
+                .map(TypeToken::getRawType)
+                .filter(ele -> ele.isAnnotationPresent(GraphQLInterface.class))
+                .flatMap(ele -> Arrays.stream(ele.getMethods())
+                        .filter(method -> !SETTER_PREFIX.matcher(method.getName()).matches())    //忽略 setter
+                        .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法
+                        .map(method -> resolveField(method, null)))
+                .collect(Collectors.toList());
+
         return GraphQLInterfaceType.newInterface()
                 .name(resolveTypeName(cls))
                 .description(resolveTypeDescription(cls))
-                .fields(resolveFields(cls))
+                .fields(fields)
                 .typeResolver(typeResolver)
                 .build();
     }
@@ -158,27 +185,31 @@ public class SchemaResolver {
     }
 
     /**
+     * 获取 Scalar Type 容器
+     *
+     * @return Scalar Type 容器
+     */
+    public ScalarTypeRepository getTypeRepository() {
+        return typeRepository;
+    }
+
+    /**
      * 解析 GraphQL 字段描述
      *
      * @param cls 需要解析的类
      * @return 字段描述
      */
     private List<GraphQLFieldDefinition> resolveFields(Class<?> cls) {
-        return TypeToken.of(cls).getTypes().stream()
-                .map(TypeToken::getRawType)
-                .filter(ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class) || ele.isAnnotationPresent(GraphQLInterface.class))
+        // field 不支持 ignore
+        return resolveClassExtensions(TypeToken.of(cls))
                 .flatMap(ele -> {
                     Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
                             .collect(Collectors.toMap(Field::getName, Function.identity()));
 
-                    // field 不支持 ignore
-
-                    //TODO 类型扩展支持
-
                     return Arrays.stream(ele.getMethods())
                             .filter(method -> !SETTER_PREFIX.matcher(method.getName()).matches())    //忽略 setter
                             .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法
-                            .map(method -> resolveField(method, fieldNameMap.get(ResolveUtil.simplifyName(method.getName()))));
+                            .map(method -> resolveField(method, fieldNameMap.get(simplifyName(method.getName()))));
                 })
                 .collect(Collectors.toList());
     }
@@ -214,11 +245,10 @@ public class SchemaResolver {
                 .map(ele -> ele.isAnnotationPresent(GraphQLNotNull.class))
                 .orElse(invokable.isAnnotationPresent(GraphQLNotNull.class));
 
-        return ResolveUtil.wrapGraphQLType(invokable.getReturnType(), cls -> typeRepository.findMappingScalarType(cls)
-                        .map(ele -> (GraphQLOutputType) ele)
-                        //若无法识别为 ScalarType，则使用类型引用作为 OutputType
-                        .orElse(GraphQLTypeReference.typeRef(resolveTypeName(cls)))
-                , isNotNull);
+        return wrapGraphQLType(invokable.getReturnType(), cls -> typeRepository.findMappingScalarType(cls)
+                .map(ele -> (GraphQLOutputType) ele)
+                //若无法识别为 ScalarType，则使用类型引用作为 OutputType
+                .orElse(GraphQLTypeReference.typeRef(resolveTypeName(cls))), isNotNull);
     }
 
     /**
@@ -249,8 +279,8 @@ public class SchemaResolver {
 
         if (inputType != null) {
             GraphQLArgument argument = GraphQLArgument.newArgument()
-                    .name(ResolveUtil.resolveArgumentName(parameter))
-                    .description(ResolveUtil.resolveArgumentDescription(parameter))
+                    .name(resolveArgumentName(parameter))
+                    .description(resolveArgumentDescription(parameter))
                     .type(inputType)
                     .defaultValue(resolveArgumentDefaultValue(parameter, GraphQLTypeUtil.unwrapNonNull(inputType)))
                     .build();
@@ -262,28 +292,23 @@ public class SchemaResolver {
     }
 
     private GraphQLInputType resolveArgumentType(Parameter parameter, Class<?>[] views) {
-        boolean isNotNull = ResolveUtil.isNotNull(parameter.getAnnotation(GraphQLNotNull.class), views);
+        boolean isNotNull = isNotNull(parameter.getAnnotation(GraphQLNotNull.class), views);
         TypeToken<?> typeToken = TypeToken.of(parameter.getParameterizedType());
 
-        return ResolveUtil.wrapGraphQLType(typeToken, cls -> typeRepository.findMappingScalarType(cls)
-                        .map(ele -> (GraphQLInputType) ele)
-                        .orElseGet(() -> {
-                            if (typeToken.getRawType().isAnnotationPresent(GraphQLInput.class)) {
-                                return GraphQLTypeReference.typeRef(resolveTypeName(typeToken.getRawType()));
-                            }
+        return wrapGraphQLType(typeToken, cls -> typeRepository.findMappingScalarType(cls)
+                .map(ele -> (GraphQLInputType) ele)
+                .orElseGet(() -> {
+                    if (typeToken.getRawType().isAnnotationPresent(GraphQLInput.class)) {
+                        return GraphQLTypeReference.typeRef(resolveTypeName(typeToken.getRawType()));
+                    }
 
-                            return null;
-                        })
-                , isNotNull);
+                    return null;
+                }), isNotNull);
     }
 
     private Stream<GraphQLArgument> resolveArgumentGroup(Parameter parameter, Class<?>[] views) {
-        return TypeToken.of(parameter.getParameterizedType()).getTypes().classes().stream()
-                .map(TypeToken::getRawType)
-                .filter(ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
+        return resolveClassExtensions(TypeToken.of(parameter.getParameterizedType()))
                 .flatMap(ele -> {
-                    //TODO 类型扩展支持
-
                     Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
                             .collect(Collectors.toMap(Field::getName, Function.identity()));
 
@@ -291,7 +316,7 @@ public class SchemaResolver {
                             .filter(method -> method.getParameterCount() > 0)
                             .filter(method -> SETTER_PREFIX.matcher(method.getName()).matches())    //仅使用 setter
                             .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法
-                            .flatMap(method -> resolveFieldAsArgument(method, fieldNameMap.get(ResolveUtil.simplifyName(method.getName())), views));
+                            .flatMap(method -> resolveFieldAsArgument(method, fieldNameMap.get(simplifyName(method.getName())), views));
                 });
     }
 
@@ -307,7 +332,7 @@ public class SchemaResolver {
                 .map(ele -> ele.getAnnotation(GraphQLMutationType.class))
                 .orElse(parameter.getAnnotation(GraphQLMutationType.class));
 
-        if (!ResolveUtil.isIgnore(ignore, views)) {
+        if (!isIgnore(ignore, views)) {
             TypeToken<?> paramType = TypeToken.of(parameter.getParameterizedType());
 
             if (field != null && paramType.isSupertypeOf(field.getGenericType())) {
@@ -320,7 +345,7 @@ public class SchemaResolver {
 
             TypeToken<?> typeToken = paramType;
 
-            GraphQLInputType inputType = ResolveUtil.wrapGraphQLType(typeToken, cls -> typeRepository.findMappingScalarType(cls)
+            GraphQLInputType inputType = wrapGraphQLType(typeToken, cls -> typeRepository.findMappingScalarType(cls)
                     .map(ele -> (GraphQLInputType) ele)
                     .orElseGet(() -> {
                         if (typeToken.getRawType().isAnnotationPresent(GraphQLInput.class)) {
@@ -328,7 +353,7 @@ public class SchemaResolver {
                         }
 
                         return null;
-                    }), ResolveUtil.isNotNull(notNull, views));
+                    }), isNotNull(notNull, views));
 
             if (inputType != null) {
                 GraphQLArgument argument = GraphQLArgument.newArgument()
@@ -405,12 +430,25 @@ public class SchemaResolver {
                 );
     }
 
+    private Stream<Class<?>> resolveClassExtensions(TypeToken<?> typeToken) {
+        Set<Class<?>> objectExtensions = typeExtensions.getOrDefault(typeToken.getRawType(), Collections.emptySet());
+
+        Stream<? extends Class<?>> withParents = typeToken.getTypes().classes().stream()
+                .map(TypeToken::getRawType)
+                .filter(ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class));
+
+        Class<?>[] fieldExtensions = Optional.ofNullable(typeToken.getRawType().getAnnotation(GraphQLFieldExtension.class))
+                .map(GraphQLFieldExtension::value)
+                .orElse(new Class[0]);
+
+        return Stream.concat(objectExtensions.stream(), Stream.concat(withParents, Arrays.stream(fieldExtensions)));
+    }
+
     private List<GraphQLInputObjectField> resolveInputFields(Class<?> cls) {
         return TypeToken.of(cls).getTypes().classes().stream()
                 .map(TypeToken::getRawType)
                 .filter(ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
                 .flatMap(ele -> {
-
                     Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
                             .collect(Collectors.toMap(Field::getName, Function.identity()));
 
@@ -419,7 +457,7 @@ public class SchemaResolver {
                     return Arrays.stream(ele.getMethods())
                             .filter(method -> !SETTER_PREFIX.matcher(method.getName()).matches())    //忽略 setter
                             .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法;
-                            .map(method -> resolveInputField(method, fieldNameMap.get(ResolveUtil.simplifyName(method.getName()))));
+                            .map(method -> resolveInputField(method, fieldNameMap.get(simplifyName(method.getName()))));
                 })
                 .collect(Collectors.toList());
     }
@@ -439,12 +477,10 @@ public class SchemaResolver {
                 .map(ele -> ele.isAnnotationPresent(GraphQLNotNull.class))
                 .orElse(invokable.isAnnotationPresent(GraphQLNotNull.class));
 
-        return ResolveUtil.wrapGraphQLType(invokable.getReturnType(), cls -> typeRepository.findMappingScalarType(cls)
-                        .map(ele -> (GraphQLInputType) ele)
-                        //若无法识别为 ScalarType，则使用类型引用作为 InputType
-                        .orElse(GraphQLTypeReference.typeRef(resolveTypeName(cls)))
-                , isNotNull);
+        return wrapGraphQLType(invokable.getReturnType(), cls -> typeRepository.findMappingScalarType(cls)
+                .map(ele -> (GraphQLInputType) ele)
+                //若无法识别为 ScalarType，则使用类型引用作为 InputType
+                .orElse(GraphQLTypeReference.typeRef(resolveTypeName(cls))), isNotNull);
     }
-
 
 }
