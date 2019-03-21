@@ -9,7 +9,7 @@
     <version>0.1.0-SNAPSHOT</version>
 
     <properties>
-        <graphql-java.version>11.0</graphql-java.version>
+        <graphql-java.version>12.0</graphql-java.version>
         <graphql-java-extended-scalars.version>1.0</graphql-java-extended-scalars.version>
         <guava.version>27.0.1-jre</guava.version>
         <spf4j-slf4j-test.version>8.6.3</spf4j-slf4j-test.version>

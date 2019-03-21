@@ -1,0 +1,11 @@
+type ObjectWithExtension {
+  doSomething: String @deprecated(reason : "it is deprecate")
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}

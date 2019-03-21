@@ -1,0 +1,25 @@
+type MutationObject {
+  id: Long!
+  name: String!
+  parent: MutationObject
+}
+
+type MutationService {
+  create(name: String!, parent: MutationInputObject): MutationObject
+  delete: Int
+  update(id: Long!, name: String, parent: MutationInputObject): MutationObject
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}
+
+input MutationInputObject {
+  id: Long!
+  name: String
+  parent: MutationInputObject
+}

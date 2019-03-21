@@ -1,0 +1,11 @@
+interface NormalInterface {
+  info: String
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}

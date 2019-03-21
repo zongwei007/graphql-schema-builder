@@ -30,7 +30,7 @@ public class NormalObject {
     }
 
     @GraphQLNotNull
-    public Set<OffsetDateTime> filterDateTimes(@GraphQLArgument("args") @GraphQLDefaultValueFactory(OffsetDateTimeDefaultValue.class) @GraphQLNotNull OffsetDateTime... args) {
+    public Set<OffsetDateTime> filterDateTimes(@GraphQLArgument("args") @GraphQLNotNull OffsetDateTime... args) {
         return new HashSet<>(Arrays.asList(args));
     }
 

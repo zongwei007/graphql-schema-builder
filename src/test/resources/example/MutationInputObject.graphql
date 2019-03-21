@@ -1,0 +1,13 @@
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}
+
+input MutationInputObject {
+  id: Long!
+  name: String
+  parent: MutationInputObject
+}

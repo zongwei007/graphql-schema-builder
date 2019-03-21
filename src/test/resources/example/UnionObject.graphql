@@ -1,0 +1,32 @@
+interface NormalInterface {
+  info: String
+}
+
+union UnionObject = Normal | NormalInterfaceImpl
+
+"Normal GraphQL Object"
+type Normal {
+  barList: [String]
+  "GraphQL count field"
+  count(
+    #A cnd argument
+    cnd: String! = "1"
+  ): Int!
+  filterDateTimes(args: [DateTime]!): [DateTime]!
+  "GraphQL foo field"
+  foo: String
+  fooList: [String]!
+}
+
+type NormalInterfaceImpl implements NormalInterface {
+  data: String
+  info: String
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}

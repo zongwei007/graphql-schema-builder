@@ -1,0 +1,42 @@
+interface NormalInterface {
+  info: String
+  items: String
+}
+
+"Normal GraphQL Object"
+type Normal {
+  barList: [String]
+  "GraphQL count field"
+  count(
+    #A cnd argument
+    cnd: String! = "1"
+  ): Int!
+  filterDateTimes(args: [DateTime]!): [DateTime]!
+  "GraphQL foo field"
+  foo: String
+  fooList: [String]!
+  "A foobar field"
+  foobar: String
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}
+
+enum EnumObject {
+  #GraphQL Enum first
+  first
+  second
+  third
+}
+
+input MutationInputObject {
+  id: Long!
+  name: String
+  now: DateTime
+  parent: MutationInputObject
+}

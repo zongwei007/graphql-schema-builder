@@ -1,0 +1,13 @@
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}
+
+enum EnumObject {
+  #GraphQL Enum first
+  first
+  second
+}

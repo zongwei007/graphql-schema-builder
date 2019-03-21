@@ -1,5 +1,6 @@
 package com.ltsoft.graphql.types;
 
+import com.ltsoft.graphql.example.HelloObjectScalar;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.Coercing;
@@ -20,25 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @RunWith(Spf4jTestLogJUnitRunner.class)
 public class ScalarTypeRepositoryTest {
 
-    private static final GraphQLScalarType HELLO = new GraphQLScalarType(
-            "Hello", "hello type",
-            new Coercing<String, String>() {
-                @Override
-                public String serialize(Object input) {
-                    return "Hello World!";
-                }
-
-                @Override
-                public String parseValue(Object input) {
-                    return "Hello World!";
-                }
-
-                @Override
-                public String parseLiteral(Object input) {
-                    return "Hello World!";
-                }
-            });
-
     @Test
     public void testRegister() {
         ScalarTypeRepository repo = new ScalarTypeRepository();
@@ -49,11 +31,13 @@ public class ScalarTypeRepositoryTest {
                 LogMatchers.hasMatchingMessage(Matchers.containsString("registered"))
         );
 
-        repo.register(HELLO);
+        GraphQLScalarType hello = new HelloObjectScalar();
+
+        repo.register(hello);
 
         assertThat(repo.getScalarType("Hello").isPresent()).isTrue();
 
-        repo.register(HELLO);
+        repo.register(hello);
 
         expect.assertObservation();
     }

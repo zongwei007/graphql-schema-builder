@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import graphql.Scalars;
+import graphql.language.ScalarTypeDefinition;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLScalarType;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ public class ScalarTypeRepository {
             .build(new ClassGraphQLScalarTypeCacheLoader());
 
     private Map<String, GraphQLScalarType> scalarTypeMap = new HashMap<>();
+    private Map<String, ScalarTypeDefinition> typeDefinitionMap = new HashMap<>();
     private BiMap<Class<?>, GraphQLScalarType> javaTypeMap = HashBiMap.create();
 
     public ScalarTypeRepository() {
@@ -65,6 +67,8 @@ public class ScalarTypeRepository {
             if (scalarTypeMap.putIfAbsent(type.getName(), type) != null) {
                 LOGGER.warn("GraphQLScalarType {} has been registered", type.getName());
             }
+
+            typeDefinitionMap.put(type.getName(), ScalarTypeDefinition.newScalarTypeDefinition().name(type.getName()).build());
         }
         return this;
     }
@@ -84,12 +88,20 @@ public class ScalarTypeRepository {
         return Optional.ofNullable(scalarTypeMap.get(name));
     }
 
+    public Optional<ScalarTypeDefinition> getScalarTypeDefinition(String name) {
+        return Optional.ofNullable(typeDefinitionMap.get(name));
+    }
+
     public Optional<GraphQLScalarType> findMappingScalarType(Class<?> cls) {
         return MAPPING_CACHE.getUnchecked(cls);
     }
 
     public Set<GraphQLScalarType> allExtensionTypes() {
         return new HashSet<>(scalarTypeMap.values());
+    }
+
+    public Set<ScalarTypeDefinition> allExtensionTypeDefinitions() {
+        return new HashSet<>(typeDefinitionMap.values());
     }
 
     private class ClassGraphQLScalarTypeCacheLoader extends CacheLoader<Class<?>, Optional<GraphQLScalarType>> {
