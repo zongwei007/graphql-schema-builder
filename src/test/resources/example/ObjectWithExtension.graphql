@@ -1,3 +1,4 @@
+#It is a comment
 type ObjectWithExtension {
   doSomething: String @deprecated(reason : "it is deprecate")
 }
