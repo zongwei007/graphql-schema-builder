@@ -1,9 +1,9 @@
-package com.ltsoft.graphql.types;
+package com.ltsoft.graphql.scalars;
 
 import com.ltsoft.graphql.example.HelloObjectScalar;
+import com.ltsoft.graphql.scalars.ScalarTypeRepository;
+import com.ltsoft.graphql.scalars.ScalarTypes;
 import graphql.Scalars;
-import graphql.scalars.ExtendedScalars;
-import graphql.schema.Coercing;
 import graphql.schema.GraphQLScalarType;
 import org.hamcrest.Matchers;
 import org.junit.Test;

@@ -14,35 +14,35 @@ import java.time.LocalTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-public class LocalTimeScalarTest {
+public class LocalTimeCoercingTest {
 
-    private LocalTimeScalar scalar = new LocalTimeScalar();
+    private LocalTimeCoercing coercing = new LocalTimeCoercing();
     private static final LocalTime SOURCE = LocalTime.parse("10:15");
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(LocalTime.of(10,15))).isEqualTo("10:15:00");
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo("10:15:00");
+        assertThat(coercing.serialize(LocalTime.of(10,15))).isEqualTo("10:15:00");
+        assertThat(coercing.serialize(SOURCE.toString())).isEqualTo("10:15:00");
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize("2011-12-03"));
+                .isThrownBy(() -> coercing.serialize("2011-12-03"));
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize(Duration.ofSeconds(1)));
+                .isThrownBy(() -> coercing.serialize(Duration.ofSeconds(1)));
     }
 
     @Test
     public void testParseValue() {
-        assertThat(scalar.getCoercing().parseValue(LocalTime.of(10,15))).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().parseValue(SOURCE.toString())).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(LocalTime.of(10,15))).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(SOURCE.toString())).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseValueException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseValue(Duration.ofSeconds(1)));
+                .isThrownBy(() -> coercing.parseValue(Duration.ofSeconds(1)));
     }
 
     @Test
     public void testParseLiteral() {
         StringValue stringValue = new StringValue(SOURCE.toString());
 
-        assertThat(scalar.getCoercing().parseLiteral(stringValue)).isEqualTo(SOURCE);
+        assertThat(coercing.parseLiteral(stringValue)).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseLiteralException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseLiteral(new BooleanValue(false)));
+                .isThrownBy(() -> coercing.parseLiteral(new BooleanValue(false)));
     }
 }

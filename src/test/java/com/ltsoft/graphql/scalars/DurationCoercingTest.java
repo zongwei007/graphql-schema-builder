@@ -15,30 +15,30 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-public class DurationScalarTest {
+public class DurationCoercingTest {
 
-    private DurationScalar scalar = new DurationScalar();
+    private DurationCoercing coercing = new DurationCoercing();
     private static final Duration MINUTES_15 = Duration.ofMinutes(15);
     private static final Duration SECONDS_15 = Duration.ofSeconds(15);
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(Duration.ofMinutes(15))).isEqualTo("PT15M");
-        assertThat(scalar.getCoercing().serialize("PT15M")).isEqualTo("PT15M");
-        assertThat(scalar.getCoercing().serialize(15L)).isEqualTo("PT15S");
-        assertThat(scalar.getCoercing().serialize(15)).isEqualTo("PT15S");
+        assertThat(coercing.serialize(Duration.ofMinutes(15))).isEqualTo("PT15M");
+        assertThat(coercing.serialize("PT15M")).isEqualTo("PT15M");
+        assertThat(coercing.serialize(15L)).isEqualTo("PT15S");
+        assertThat(coercing.serialize(15)).isEqualTo("PT15S");
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize("15M"));
+                .isThrownBy(() -> coercing.serialize("15M"));
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize(Instant.now()));
+                .isThrownBy(() -> coercing.serialize(Instant.now()));
     }
 
     @Test
     public void testParseValue() {
-        assertThat(scalar.getCoercing().parseValue(MINUTES_15)).isEqualTo(MINUTES_15);
-        assertThat(scalar.getCoercing().parseValue("PT15M")).isEqualTo(MINUTES_15);
+        assertThat(coercing.parseValue(MINUTES_15)).isEqualTo(MINUTES_15);
+        assertThat(coercing.parseValue("PT15M")).isEqualTo(MINUTES_15);
         assertThatExceptionOfType(CoercingParseValueException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseValue(Instant.now()));
+                .isThrownBy(() -> coercing.parseValue(Instant.now()));
     }
 
     @Test
@@ -46,9 +46,9 @@ public class DurationScalarTest {
         StringValue stringValue = new StringValue("PT15M");
         IntValue intValue = new IntValue(new BigInteger("15"));
 
-        assertThat(scalar.getCoercing().parseLiteral(stringValue)).isEqualTo(MINUTES_15);
-        assertThat(scalar.getCoercing().parseLiteral(intValue)).isEqualTo(SECONDS_15);
+        assertThat(coercing.parseLiteral(stringValue)).isEqualTo(MINUTES_15);
+        assertThat(coercing.parseLiteral(intValue)).isEqualTo(SECONDS_15);
         assertThatExceptionOfType(CoercingParseLiteralException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseLiteral(new BooleanValue(false)));
+                .isThrownBy(() -> coercing.parseLiteral(new BooleanValue(false)));
     }
 }

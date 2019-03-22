@@ -15,28 +15,28 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-public class InstantScalarTest {
+public class InstantCoercingTest {
 
-    private InstantScalar scalar = new InstantScalar();
+    private InstantCoercing coercing = new InstantCoercing();
     private static final Instant SOURCE = Instant.parse("2011-12-03T10:15:30Z");
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(Instant.ofEpochMilli(SOURCE.toEpochMilli()))).isEqualTo("2011-12-03T10:15:30Z");
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo("2011-12-03T10:15:30Z");
-        assertThat(scalar.getCoercing().serialize(Math.floorDiv(SOURCE.toEpochMilli(), 1000L))).isEqualTo("2011-12-03T10:15:30Z");
+        assertThat(coercing.serialize(Instant.ofEpochMilli(SOURCE.toEpochMilli()))).isEqualTo("2011-12-03T10:15:30Z");
+        assertThat(coercing.serialize(SOURCE.toString())).isEqualTo("2011-12-03T10:15:30Z");
+        assertThat(coercing.serialize(Math.floorDiv(SOURCE.toEpochMilli(), 1000L))).isEqualTo("2011-12-03T10:15:30Z");
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize("2011-12-03"));
+                .isThrownBy(() -> coercing.serialize("2011-12-03"));
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize(Duration.ofSeconds(1)));
+                .isThrownBy(() -> coercing.serialize(Duration.ofSeconds(1)));
     }
 
     @Test
     public void testParseValue() {
-        assertThat(scalar.getCoercing().parseValue(SOURCE)).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().parseValue(SOURCE.toString())).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(SOURCE)).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(SOURCE.toString())).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseValueException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseValue(Duration.ofSeconds(1)));
+                .isThrownBy(() -> coercing.parseValue(Duration.ofSeconds(1)));
     }
 
     @Test
@@ -44,10 +44,10 @@ public class InstantScalarTest {
         StringValue stringValue = new StringValue(SOURCE.toString());
         IntValue intValue = new IntValue(new BigInteger(String.valueOf(Math.floorDiv(SOURCE.toEpochMilli(), 1000L))));
 
-        assertThat(scalar.getCoercing().parseLiteral(stringValue)).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().parseLiteral(intValue)).isEqualTo(SOURCE);
+        assertThat(coercing.parseLiteral(stringValue)).isEqualTo(SOURCE);
+        assertThat(coercing.parseLiteral(intValue)).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseLiteralException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseLiteral(new BooleanValue(false)));
+                .isThrownBy(() -> coercing.parseLiteral(new BooleanValue(false)));
     }
 
 }

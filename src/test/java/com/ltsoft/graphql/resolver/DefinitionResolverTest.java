@@ -2,7 +2,7 @@ package com.ltsoft.graphql.resolver;
 
 import com.ltsoft.graphql.annotations.GraphQLType;
 import com.ltsoft.graphql.example.*;
-import com.ltsoft.graphql.types.ScalarTypeRepository;
+import com.ltsoft.graphql.scalars.ScalarTypeRepository;
 import graphql.language.*;
 import graphql.schema.idl.SchemaPrinter;
 import org.junit.Test;

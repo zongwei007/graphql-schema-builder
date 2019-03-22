@@ -1,4 +1,4 @@
-package com.ltsoft.graphql.types;
+package com.ltsoft.graphql.scalars;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -18,7 +18,7 @@ import java.net.URI;
 import java.time.*;
 import java.util.*;
 
-public class ScalarTypeRepository {
+public final class ScalarTypeRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScalarTypeRepository.class);
 

@@ -14,28 +14,28 @@ import java.time.Year;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-public class YearScalarTest {
+public class YearCoercingTest {
 
-    private YearScalar scalar = new YearScalar();
+    private YearCoercing coercing = new YearCoercing();
     private static final Year SOURCE = Year.of(2011);
 
     @Test
     public void testSerialize() {
-        assertThat(scalar.getCoercing().serialize(Year.of(2011))).isEqualTo(2011);
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo(2011);
-        assertThat(scalar.getCoercing().serialize(2011)).isEqualTo(2011);
+        assertThat(coercing.serialize(Year.of(2011))).isEqualTo(2011);
+        assertThat(coercing.serialize(SOURCE.toString())).isEqualTo(2011);
+        assertThat(coercing.serialize(2011)).isEqualTo(2011);
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize("15M"));
+                .isThrownBy(() -> coercing.serialize("15M"));
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize("a"));
+                .isThrownBy(() -> coercing.serialize("a"));
     }
 
     @Test
     public void testParseValue() {
-        assertThat(scalar.getCoercing().parseValue(SOURCE)).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().parseValue(SOURCE.toString())).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(SOURCE)).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(SOURCE.toString())).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseValueException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseValue("b"));
+                .isThrownBy(() -> coercing.parseValue("b"));
     }
 
     @Test
@@ -43,10 +43,10 @@ public class YearScalarTest {
         StringValue stringValue = new StringValue(SOURCE.toString());
         IntValue intValue = new IntValue(new BigInteger("2011"));
 
-        assertThat(scalar.getCoercing().parseLiteral(stringValue)).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().parseLiteral(intValue)).isEqualTo(SOURCE);
+        assertThat(coercing.parseLiteral(stringValue)).isEqualTo(SOURCE);
+        assertThat(coercing.parseLiteral(intValue)).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseLiteralException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseLiteral(new BooleanValue(false)));
+                .isThrownBy(() -> coercing.parseLiteral(new BooleanValue(false)));
     }
 
 }

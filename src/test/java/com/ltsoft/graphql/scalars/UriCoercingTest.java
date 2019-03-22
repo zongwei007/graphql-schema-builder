@@ -15,35 +15,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 
-public class UriScalarTest {
+public class UriCoercingTest {
 
-    private UriScalar scalar = new UriScalar();
+    private UriCoercing coercing = new UriCoercing();
     private static final URI SOURCE = URI.create("../foo/bar");
 
     @Test
     public void testSerialize() throws MalformedURLException {
-        assertThat(scalar.getCoercing().serialize(SOURCE)).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().serialize(new URL("http://localhost"))).isEqualTo(URI.create("http://localhost"));
-        assertThat(scalar.getCoercing().serialize(SOURCE.toString())).isEqualTo(SOURCE);
+        assertThat(coercing.serialize(SOURCE)).isEqualTo(SOURCE);
+        assertThat(coercing.serialize(new URL("http://localhost"))).isEqualTo(URI.create("http://localhost"));
+        assertThat(coercing.serialize(SOURCE.toString())).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingSerializeException.class)
-                .isThrownBy(() -> scalar.getCoercing().serialize(1));
+                .isThrownBy(() -> coercing.serialize(1));
     }
 
     @Test
     public void testParseValue() {
-        assertThat(scalar.getCoercing().parseValue(SOURCE)).isEqualTo(SOURCE);
-        assertThat(scalar.getCoercing().parseValue(SOURCE.toString())).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(SOURCE)).isEqualTo(SOURCE);
+        assertThat(coercing.parseValue(SOURCE.toString())).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseValueException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseValue(1));
+                .isThrownBy(() -> coercing.parseValue(1));
     }
 
     @Test
     public void testParseLiteral() {
         StringValue stringValue = new StringValue(SOURCE.toString());
 
-        assertThat(scalar.getCoercing().parseLiteral(stringValue)).isEqualTo(SOURCE);
+        assertThat(coercing.parseLiteral(stringValue)).isEqualTo(SOURCE);
         assertThatExceptionOfType(CoercingParseLiteralException.class)
-                .isThrownBy(() -> scalar.getCoercing().parseLiteral(new BooleanValue(false)));
+                .isThrownBy(() -> coercing.parseLiteral(new BooleanValue(false)));
     }
 
 }
