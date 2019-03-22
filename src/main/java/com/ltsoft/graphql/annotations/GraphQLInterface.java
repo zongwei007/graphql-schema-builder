@@ -1,6 +1,6 @@
 package com.ltsoft.graphql.annotations;
 
-import com.ltsoft.graphql.resolver.DefaultTypeResolver;
+import com.ltsoft.graphql.impl.DefaultTypeResolver;
 import graphql.schema.TypeResolver;
 
 import java.lang.annotation.Documented;

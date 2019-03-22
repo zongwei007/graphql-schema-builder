@@ -4,6 +4,7 @@ import com.google.common.reflect.Invokable;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.ServiceInstanceFactory;
 import com.ltsoft.graphql.annotations.*;
+import com.ltsoft.graphql.impl.DefaultServiceInstanceFactory;
 import com.ltsoft.graphql.types.ScalarTypeRepository;
 import graphql.language.*;
 import graphql.schema.GraphQLScalarType;

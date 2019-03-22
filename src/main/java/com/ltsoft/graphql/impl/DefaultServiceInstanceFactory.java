@@ -1,4 +1,4 @@
-package com.ltsoft.graphql.resolver;
+package com.ltsoft.graphql.impl;
 
 import com.ltsoft.graphql.ServiceInstanceFactory;
 

@@ -81,7 +81,7 @@ public class ResolveUtil {
      * @param cls 需要解析的类
      * @return 类型名称
      */
-    static String resolveTypeName(Class<?> cls) {
+    public static String resolveTypeName(Class<?> cls) {
         return Optional.ofNullable(cls.getAnnotation(GraphQLName.class))
                 .map(GraphQLName::value)
                 .orElse(cls.getSimpleName());
@@ -386,5 +386,20 @@ public class ResolveUtil {
         }
 
         return provider.apply(((TypeName) type).getName());
+    }
+
+    /**
+     * 判断某 Java 类型是否能被解析识别
+     *
+     * @param cls 要解析的类
+     * @return 是否支持
+     */
+    public static boolean canResolve(Class<?> cls) {
+        return cls.isAnnotationPresent(GraphQLType.class)
+                || cls.isAnnotationPresent(GraphQLInterface.class)
+                || cls.isAnnotationPresent(GraphQLInput.class)
+                || cls.isAnnotationPresent(GraphQLTypeExtension.class)
+                || cls.isAnnotationPresent(GraphQLUnion.class)
+                || cls.isAnnotationPresent(GraphQLDirectiveLocations.class);
     }
 }
