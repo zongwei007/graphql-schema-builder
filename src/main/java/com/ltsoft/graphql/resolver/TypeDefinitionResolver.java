@@ -12,12 +12,7 @@ import graphql.schema.idl.TypeInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -41,6 +36,19 @@ public class TypeDefinitionResolver {
 
     public TypeDefinitionResolver(ServiceInstanceFactory instanceFactory) {
         this.instanceFactory = instanceFactory;
+    }
+
+    public DirectiveDefinition directive(Class<?> cls) {
+        checkArgument(cls.isAnnotationPresent(GraphQLDirectiveLocations.class));
+
+        return DirectiveDefinition.newDirectiveDefinition()
+                .comments(resolveComment(cls))
+                .description(resolveDescription(cls))
+                .directiveLocations(resolveDirectiveLocation(cls))
+                .inputValueDefinitions(resolveDirectiveArguments(cls))
+                .name(resolveTypeName(cls))
+                .sourceLocation(resolveSourceLocation(cls))
+                .build();
     }
 
     @SuppressWarnings("unchecked")
@@ -121,7 +129,7 @@ public class TypeDefinitionResolver {
 
         List<EnumValueDefinition> definitions = Arrays.stream(cls.getFields())
                 .map(field -> EnumValueDefinition.newEnumValueDefinition()
-                        .description(resolveFieldDescription(null, field))
+                        .description(ResolveUtil.resolveDescription(null, field))
                         .directives(resolveDirective(null, field))
                         .name(resolveFieldName(null, field))
                         .build())
@@ -274,7 +282,7 @@ public class TypeDefinitionResolver {
     private FieldDefinition resolveField(Method method, Field field) {
         return FieldDefinition.newFieldDefinition()
                 .comments(resolveComment(method, field))
-                .description(resolveFieldDescription(method, field))
+                .description(ResolveUtil.resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
                 .inputValueDefinitions(resolveFieldInputs(method))
                 .name(resolveFieldName(method, field))
@@ -320,6 +328,19 @@ public class TypeDefinitionResolver {
                 .collect(Collectors.toList());
     }
 
+    private List<InputValueDefinition> resolveDirectiveArguments(Class<?> cls) {
+        return Arrays.stream(cls.getMethods())
+                .map(method -> InputValueDefinition.newInputValueDefinition()
+                        .comments(resolveComment(method, null))
+                        .defaultValue(resolveInputDefaultValue(method.getAnnotation(GraphQLDefaultValue.class), Invokable.from(method).getReturnType()))
+                        .name(method.getName())
+                        .sourceLocation(resolveSourceLocation(method, null))
+                        .type(resolveFieldType(method, null))
+                        .build()
+                )
+                .collect(Collectors.toList());
+    }
+
     /**
      * 解析 GraphQL Argument
      *
@@ -332,7 +353,7 @@ public class TypeDefinitionResolver {
 
         if (inputType != null) {
             InputValueDefinition argument = InputValueDefinition.newInputValueDefinition()
-                    .description(resolveArgumentDescription(parameter))
+                    .description(ResolveUtil.resolveDescription(parameter))
                     .defaultValue(resolveArgumentDefaultValue(parameter))
                     .directives(resolveDirective(parameter))
                     .name(resolveArgumentName(parameter))
@@ -399,8 +420,8 @@ public class TypeDefinitionResolver {
 
             InputValueDefinition inputType = InputValueDefinition.newInputValueDefinition()
                     .comments(resolveComment(method, field))
-                    .defaultValue(resolveFieldDefaultValue(method))
-                    .description(resolveFieldDescription(method, field))
+                    .defaultValue(resolveFieldInputDefaultValue(method, field))
+                    .description(ResolveUtil.resolveDescription(method, field))
                     .directives(resolveDirective(method, field))
                     .name(resolveFieldName(method, field))
                     .sourceLocation(resolveSourceLocation(method, field))
@@ -413,38 +434,18 @@ public class TypeDefinitionResolver {
         return Stream.of();
     }
 
-    /**
-     * 解析参数默认值
-     *
-     * @param parameter 关联参数
-     * @return 参数默认值
-     */
-    private Value resolveArgumentDefaultValue(Parameter parameter) {
-        TypeToken<?> typeToken = TypeToken.of(parameter.getParameterizedType());
+    private Value resolveInputDefaultValue(GraphQLDefaultValue defaultValue, TypeToken<?> typeToken) {
         GraphQLScalarType scalarType = Optional.ofNullable(resolveInputTypeDefinition(typeToken, false))
                 .map(type -> TypeInfo.typeInfo(type).getName())
                 .map(name -> typeRepository.getScalarType(name)
                         .orElse(getStandardScalarType(name).orElse(null)))
                 .orElse(null);
 
-        return Optional.ofNullable(parameter.getAnnotation(GraphQLDefaultValue.class))
+        return Optional.ofNullable(defaultValue)
                 .map(GraphQLDefaultValue::value)
                 .map(str -> {
                     if (scalarType != null) {
-                        Object value = scalarType.getCoercing().parseValue(str);
-
-                        switch (scalarType.getName()) {
-                            case "Boolean":
-                                return new BooleanValue((Boolean) value);
-                            case "Float":
-                                return new FloatValue(new BigDecimal((Double) value));
-                            case "Int":
-                                return new IntValue(new BigInteger(String.valueOf(value)));
-                            case "String":
-                                return new StringValue((String) value);
-                            default:
-                                return null;
-                        }
+                        return AstValueHelper.astFromValue(str, scalarType);
                     }
 
                     if (typeToken.getRawType().isEnum() && typeToken.getRawType().isAnnotationPresent(GraphQLType.class)) {
@@ -457,15 +458,28 @@ public class TypeDefinitionResolver {
     }
 
     /**
+     * 解析参数默认值
+     *
+     * @param parameter 关联参数
+     * @return 参数默认值
+     */
+    private Value resolveArgumentDefaultValue(Parameter parameter) {
+        return resolveInputDefaultValue(parameter.getAnnotation(GraphQLDefaultValue.class), TypeToken.of(parameter.getParameterizedType()));
+    }
+
+    /**
      * 字段映射为参数时，解析参数默认值
      *
      * @param method 关联的方法
+     * @param field  同名字段
      * @return 字段默认值
      */
-    private Value resolveFieldDefaultValue(Method method) {
-        checkArgument(method.getParameterCount() == 1);
+    private Value resolveFieldInputDefaultValue(Method method, Field field) {
+        GraphQLDefaultValue defaultValue = Optional.ofNullable(field)
+                .map(ele -> ele.getAnnotation(GraphQLDefaultValue.class))
+                .orElse(method.getAnnotation(GraphQLDefaultValue.class));
 
-        return resolveArgumentDefaultValue(method.getParameters()[0]);
+        return resolveInputDefaultValue(defaultValue, TypeToken.of(method.getParameters()[0].getParameterizedType()));
     }
 
     /**
@@ -523,8 +537,8 @@ public class TypeDefinitionResolver {
 
         return InputValueDefinition.newInputValueDefinition()
                 .comments(resolveComment(method, field))
-                .defaultValue(resolveFieldDefaultValue(method))
-                .description(resolveFieldDescription(method, field))
+                .defaultValue(resolveFieldInputDefaultValue(method, field))
+                .description(ResolveUtil.resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
                 .name(resolveFieldName(method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
@@ -549,6 +563,71 @@ public class TypeDefinitionResolver {
 
                     return null;
                 }), isNotNull);
+    }
+
+    private List<Argument> resolveDirectiveArguments(String[] arguments, Class<?> type) {
+        List<InputValueDefinition> definitions = resolveDirectiveArguments(type);
+
+        return Arrays.stream(arguments)
+                .map(ele -> Arrays.stream(ele.split(":")).map(String::trim).toArray(String[]::new))
+                .filter(items -> items.length == 2)
+                .map(items -> {
+                    String key = items[0];
+                    String val = items[1];
+
+                    InputValueDefinition definition = definitions.stream()
+                            .filter(arg -> arg.getName().equals(key))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (definition != null) {
+                        graphql.schema.GraphQLType graphQLType = buildTypeFromAST(definition.getType(), typeName ->
+                                typeRepository.getScalarType(typeName)
+                                        .orElse(getStandardScalarType(typeName).orElse(null)));
+
+                        if (graphQLType != null) {
+                            return new Argument(key, AstValueHelper.astFromValue(val, graphQLType));
+                        }
+                    }
+
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private Stream<Directive> resolveDirective(GraphQLDirective[] annotationsByType) {
+        return Arrays.stream(annotationsByType)
+                .map(ele -> new Directive(resolveTypeName(ele.type()), resolveDirectiveArguments(ele.arguments(), ele.type())));
+    }
+
+    private List<Directive> resolveDirective(Class<?> cls) {
+        return resolveDirective(cls.getAnnotationsByType(GraphQLDirective.class))
+                .collect(Collectors.toList());
+    }
+
+    private List<Directive> resolveDirective(Method method, Field field) {
+        Stream<Directive> deprecate = resolveDeprecate(method, field);
+
+        Stream<Directive> fieldDirectives = Optional.ofNullable(field)
+                .map(ele -> ele.getAnnotationsByType(GraphQLDirective.class))
+                .map(this::resolveDirective)
+                .orElse(Stream.of());
+
+        Stream<Directive> methodDirectives = Optional.ofNullable(method)
+                .map(ele -> ele.getAnnotationsByType(GraphQLDirective.class))
+                .map(this::resolveDirective)
+                .orElse(Stream.of());
+
+        return Stream.concat(deprecate, Stream.concat(fieldDirectives, methodDirectives)).collect(Collectors.toList());
+    }
+
+    private List<Directive> resolveDirective(Parameter parameter) {
+        Stream<Directive> deprecate = resolveDeprecate(parameter);
+
+        Stream<Directive> paramDirectives = resolveDirective(parameter.getAnnotationsByType(GraphQLDirective.class));
+
+        return Stream.concat(deprecate, paramDirectives).collect(Collectors.toList());
     }
 
     /**

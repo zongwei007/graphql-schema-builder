@@ -1,0 +1,11 @@
+interface NormalDirectiveExample @NormalDirective(name : "foo", page : 1) {
+  info: String @NormalDirective(name : "bar", page : 2)
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}

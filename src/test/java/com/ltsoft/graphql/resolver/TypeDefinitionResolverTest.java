@@ -124,6 +124,17 @@ public class TypeDefinitionResolverTest {
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/EnumObject.graphql"));
     }
 
+    @Test
+    public void testDirective() {
+        TypeDefinitionResolver typeDefinitionResolver = new TypeDefinitionResolver();
+
+        DirectiveDefinition directiveDefinition = typeDefinitionResolver.directive(NormalDirective.class);
+        InterfaceTypeDefinition example = typeDefinitionResolver.iface(NormalDirectiveExample.class);
+
+        assertThat(printDefinition(typeDefinitionResolver, directiveDefinition, example))
+                .isEqualToIgnoringWhitespace(readSchemaExample("/example/NormalDirective.graphql"));
+    }
+
     private String readSchemaExample(String path) {
         try {
             return String.join("\n", Files.readAllLines(Paths.get(getClass().getResource(path).toURI())));
@@ -154,6 +165,8 @@ public class TypeDefinitionResolverTest {
 
         typeRepository.allExtensionTypeDefinitions().forEach(documentBuilder::definition);
 
-        return printer.print(documentBuilder.build());
+        Document schemaIDL = documentBuilder.build();
+
+        return printer.print(schemaIDL);
     }
 }

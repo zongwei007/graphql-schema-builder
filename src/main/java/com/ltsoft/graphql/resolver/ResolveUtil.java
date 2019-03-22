@@ -21,6 +21,8 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static graphql.schema.GraphQLList.list;
+import static graphql.schema.GraphQLNonNull.nonNull;
 
 public class ResolveUtil {
 
@@ -147,7 +149,7 @@ public class ResolveUtil {
      * @param field  关联字段
      * @return 字段描述
      */
-    static Description resolveFieldDescription(Method method, Field field) {
+    static Description resolveDescription(Method method, Field field) {
         String description = Optional.ofNullable(field)
                 .map(ele -> ele.getAnnotation(GraphQLDescription.class))
                 .map(GraphQLDescription::value)
@@ -171,7 +173,7 @@ public class ResolveUtil {
      * @param parameter 所需解析的参数
      * @return 参数描述
      */
-    static Description resolveArgumentDescription(Parameter parameter) {
+    static Description resolveDescription(Parameter parameter) {
         return Optional.ofNullable(parameter.getAnnotation(GraphQLDescription.class))
                 .map(GraphQLDescription::value)
                 .map(str -> new Description(str, null, str.contains("\n")))
@@ -185,7 +187,7 @@ public class ResolveUtil {
      * @param field  关联字段
      * @return 作废原因
      */
-    static Stream<Directive> resolveFieldDeprecate(Method method, Field field) {
+    static Stream<Directive> resolveDeprecate(Method method, Field field) {
         String reason = Optional.ofNullable(field)
                 .map(ele -> ele.getAnnotation(GraphQLDeprecate.class))
                 .map(GraphQLDeprecate::value)
@@ -201,6 +203,27 @@ public class ResolveUtil {
                     .name("deprecated")
                     .arguments(Collections.singletonList(new Argument("reason", new StringValue(reason))))
                     .sourceLocation(resolveSourceLocation(method, field))
+                    .build());
+        }
+
+        return Stream.of();
+    }
+
+    /**
+     * 解析 GraphQL 参数作废原因
+     *
+     * @param parameter 所需要解析的参数
+     * @return 作废原因
+     */
+    static Stream<Directive> resolveDeprecate(Parameter parameter) {
+        String reason = Optional.ofNullable(parameter.getAnnotation(GraphQLDeprecate.class))
+                .map(GraphQLDeprecate::value)
+                .orElse(null);
+
+        if (reason != null) {
+            return Stream.of(Directive.newDirective()
+                    .name("deprecated")
+                    .arguments(Collections.singletonList(new Argument("reason", new StringValue(reason))))
                     .build());
         }
 
@@ -292,18 +315,11 @@ public class ResolveUtil {
         return Collections.emptyList();
     }
 
-    static List<Directive> resolveDirective(Class<?> cls) {
-        return Collections.emptyList();
-    }
-
-    static List<Directive> resolveDirective(Method method, Field field) {
-        Stream<Directive> deprecate = resolveFieldDeprecate(method, field);
-
-        return deprecate.collect(Collectors.toList());
-    }
-
-    static List<Directive> resolveDirective(Parameter parameter) {
-        return Collections.emptyList();
+    static List<DirectiveLocation> resolveDirectiveLocation(Class<?> cls) {
+        return Optional.ofNullable(cls.getAnnotation(GraphQLDirectiveLocations.class))
+                .map(GraphQLDirectiveLocations::value)
+                .map(value -> Arrays.stream(value).map(ele -> new DirectiveLocation(ele.name())).collect(Collectors.toList()))
+                .orElse(null);
     }
 
     /**
@@ -348,7 +364,27 @@ public class ResolveUtil {
                 .collect(Collectors.toMap(GraphQLScalarType::getName, Function.identity()));
     }
 
+    /**
+     * 按名称获取 GraphQL Java 自带的基本类型
+     *
+     * @param name 类型名称
+     * @return GraphQL Scalar 类型
+     */
     static Optional<GraphQLScalarType> getStandardScalarType(String name) {
         return Optional.ofNullable(STANDARD_SCALAR_MAP.get(name));
+    }
+
+    static graphql.schema.GraphQLType buildTypeFromAST(Type type, Function<String, graphql.schema.GraphQLType> provider) {
+        graphql.schema.GraphQLType innerType;
+
+        if (type instanceof ListType) {
+            innerType = buildTypeFromAST(((ListType) type).getType(), provider);
+            return innerType != null ? list(innerType) : null;
+        } else if (type instanceof NonNullType) {
+            innerType = buildTypeFromAST(((NonNullType) type).getType(), provider);
+            return innerType != null ? nonNull(innerType) : null;
+        }
+
+        return provider.apply(((TypeName) type).getName());
     }
 }
