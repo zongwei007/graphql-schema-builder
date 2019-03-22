@@ -94,7 +94,7 @@ public class ResolveUtil {
      * @param field  方法匹配的字段
      * @return 字段名称
      */
-    static String resolveFieldName(Method method, Field field) {
+    public static String resolveFieldName(Method method, Field field) {
         checkArgument(method != null || field != null);
 
         GraphQLName name = Optional.ofNullable(field)
@@ -122,7 +122,7 @@ public class ResolveUtil {
      * @param parameter 需要解析的参数
      * @return 参数名称
      */
-    static String resolveArgumentName(Parameter parameter) {
+    public static String resolveArgumentName(Parameter parameter) {
         return Optional.of(parameter.getAnnotation(com.ltsoft.graphql.annotations.GraphQLArgument.class))
                 .map(com.ltsoft.graphql.annotations.GraphQLArgument::value)
                 .filter(name -> !name.trim().isEmpty())

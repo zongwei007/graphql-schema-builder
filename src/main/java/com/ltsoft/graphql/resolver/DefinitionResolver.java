@@ -24,18 +24,18 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
 
 @SuppressWarnings("UnstableApiUsage")
-public class TypeDefinitionResolver {
+public class DefinitionResolver {
 
     private static Pattern SETTER_PREFIX = Pattern.compile("^set[A-Z]?\\S*");
 
     private final ServiceInstanceFactory instanceFactory;
     private final ScalarTypeRepository typeRepository = new ScalarTypeRepository();
 
-    public TypeDefinitionResolver() {
+    public DefinitionResolver() {
         this(new DefaultServiceInstanceFactory());
     }
 
-    public TypeDefinitionResolver(ServiceInstanceFactory instanceFactory) {
+    public DefinitionResolver(ServiceInstanceFactory instanceFactory) {
         this.instanceFactory = instanceFactory;
     }
 
@@ -209,13 +209,6 @@ public class TypeDefinitionResolver {
 
         return typeRepository.getScalarTypeDefinition(scalarType.getName())
                 .orElseThrow(IllegalStateException::new);
-    }
-
-    public ScalarTypeDefinition scalar(Class<? extends GraphQLScalarType> cls, Class<?> javaType) {
-        checkArgument(GraphQLScalarType.class.isAssignableFrom(cls));
-        GraphQLScalarType provide = instanceFactory.provide(cls);
-
-        return scalar(provide, javaType);
     }
 
     /**
