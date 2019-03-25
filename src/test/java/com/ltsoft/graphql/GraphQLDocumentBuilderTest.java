@@ -2,7 +2,6 @@ package com.ltsoft.graphql;
 
 import com.ltsoft.graphql.example.EnumObject;
 import com.ltsoft.graphql.example.EnumObjectExtension;
-import com.ltsoft.graphql.impl.DefaultServiceInstanceFactory;
 import graphql.language.Document;
 import org.junit.Test;
 
@@ -12,7 +11,7 @@ public class GraphQLDocumentBuilderTest {
 
     @Test
     public void build() {
-        Document document = new GraphQLDocumentBuilder(new DefaultServiceInstanceFactory())
+        Document document = new GraphQLDocumentBuilder()
                 .withType(EnumObject.class)
                 .withType(EnumObjectExtension.class)
                 .builder()

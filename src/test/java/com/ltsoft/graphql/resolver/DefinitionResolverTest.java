@@ -54,16 +54,25 @@ public class DefinitionResolverTest {
     public void testObjectExtension() {
         DefinitionResolver definitionResolver = new DefinitionResolver();
 
-        ObjectTypeDefinition objectType = definitionResolver.object(NormalObject.class);
-        ObjectTypeExtensionDefinition extObjectType = definitionResolver.extension(NormalObjectExtension.class);
+        ObjectTypeDefinition objectType = definitionResolver.object(NormalInterfaceImpl.class);
+        ObjectTypeExtensionDefinition extObjectType = definitionResolver.extension(NormalInterfaceImplExtension.class);
+
         EnumTypeDefinition enumType = definitionResolver.enumeration(EnumObject.class);
         EnumTypeExtensionDefinition extEnumType = definitionResolver.extension(EnumObjectExtension.class);
+
         InterfaceTypeDefinition ifaceType = definitionResolver.iface(NormalInterface.class);
         InterfaceTypeExtensionDefinition extIfaceType = definitionResolver.extension(NormalInterfaceExtension.class);
+
         InputObjectTypeDefinition inputType = definitionResolver.input(MutationInputObject.class);
         InputObjectTypeExtensionDefinition extInputType = definitionResolver.extension(MutationInputObjectExtension.class);
 
-        assertThat(printDefinition(definitionResolver, objectType, extObjectType, enumType, extEnumType, ifaceType, extIfaceType, inputType, extInputType))
+        UnionTypeDefinition unionType = definitionResolver.union(UnionObject.class);
+        ObjectTypeDefinition normalObject = definitionResolver.object(NormalObject.class);
+        ObjectTypeDefinition mutationObject = definitionResolver.object(MutationObject.class);
+        UnionTypeExtensionDefinition extUnionType = definitionResolver.extension(UnionObjectWithExtension.class);
+
+        assertThat(printDefinition(definitionResolver, objectType, extObjectType, enumType, extEnumType,
+                ifaceType, extIfaceType, inputType, extInputType, unionType, normalObject, mutationObject, extUnionType))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/NormalObjectExtension.graphql"));
     }
 

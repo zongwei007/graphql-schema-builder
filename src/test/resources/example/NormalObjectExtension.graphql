@@ -1,6 +1,14 @@
 interface NormalInterface {
   info: String
-  items: String
+  items: [String]
+}
+
+union UnionObject = MutationObject | Normal | NormalInterfaceImpl
+
+type MutationObject {
+  id: Long!
+  name: String!
+  parent: MutationObject
 }
 
 "Normal GraphQL Object"
@@ -15,8 +23,13 @@ type Normal {
   "GraphQL foo field"
   foo: String
   fooList: [String]!
+}
+
+type NormalInterfaceImpl implements NormalInterface {
+  data: String
+  info: String
   "A foobar field"
-  foobar: String
+  items: [String]
 }
 
 type Query {

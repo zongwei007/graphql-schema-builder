@@ -2,9 +2,7 @@ package com.ltsoft.graphql.resolver;
 
 import com.google.common.reflect.Invokable;
 import com.google.common.reflect.TypeToken;
-import com.ltsoft.graphql.ServiceInstanceFactory;
 import com.ltsoft.graphql.annotations.*;
-import com.ltsoft.graphql.impl.DefaultServiceInstanceFactory;
 import com.ltsoft.graphql.scalars.ScalarTypeRepository;
 import graphql.language.*;
 import graphql.schema.GraphQLScalarType;
@@ -28,16 +26,7 @@ public class DefinitionResolver {
 
     private static Pattern SETTER_PREFIX = Pattern.compile("^set[A-Z]?\\S*");
 
-    private final ServiceInstanceFactory instanceFactory;
     private final ScalarTypeRepository typeRepository = new ScalarTypeRepository();
-
-    public DefinitionResolver() {
-        this(new DefaultServiceInstanceFactory());
-    }
-
-    public DefinitionResolver(ServiceInstanceFactory instanceFactory) {
-        this.instanceFactory = instanceFactory;
-    }
 
     public DirectiveDefinition directive(Class<?> cls) {
         checkArgument(cls.isAnnotationPresent(GraphQLDirectiveLocations.class));
@@ -112,6 +101,20 @@ public class DefinitionResolver {
                     .inputValueDefinitions(inputObjectTypeDefinition.getInputValueDefinitions())
                     .name(resolveTypeName(targetClass))
                     .sourceLocation(inputObjectTypeDefinition.getSourceLocation())
+                    .build();
+        }
+
+        if (targetClass.isAnnotationPresent(GraphQLUnion.class)) {
+            UnionTypeDefinition unionTypeDefinition = union(cls);
+
+            return (T) UnionTypeExtensionDefinition.newUnionTypeExtensionDefinition()
+                    .comments(unionTypeDefinition.getComments())
+                    .description(unionTypeDefinition.getDescription())
+                    .directives(unionTypeDefinition.getDirectives())
+                    .ignoredChars(unionTypeDefinition.getIgnoredChars())
+                    .memberTypes(unionTypeDefinition.getMemberTypes())
+                    .name(resolveTypeName(targetClass))
+                    .sourceLocation(unionTypeDefinition.getSourceLocation())
                     .build();
         }
 
@@ -218,7 +221,7 @@ public class DefinitionResolver {
      * @return GraphQL Union
      */
     public UnionTypeDefinition union(Class<?> cls) {
-        checkArgument(cls.isAnnotationPresent(GraphQLUnion.class));
+        checkAnnotation(cls, GraphQLUnion.class);
 
         List<Type> possibleTypes = Arrays.stream(cls.getAnnotation(GraphQLUnion.class).possibleTypes())
                 .map(ResolveUtil::resolveTypeName)
