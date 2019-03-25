@@ -1,10 +1,7 @@
 package com.ltsoft.graphql.scalars;
 
-import com.ltsoft.graphql.example.HelloObjectScalar;
-import com.ltsoft.graphql.scalars.ScalarTypeRepository;
-import com.ltsoft.graphql.scalars.ScalarTypes;
+import com.ltsoft.graphql.example.HelloObject;
 import graphql.Scalars;
-import graphql.schema.GraphQLScalarType;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,13 +28,11 @@ public class ScalarTypeRepositoryTest {
                 LogMatchers.hasMatchingMessage(Matchers.containsString("registered"))
         );
 
-        GraphQLScalarType hello = new HelloObjectScalar();
-
-        repo.register(hello);
+        repo.register(HelloObject.HelloObjectScalar);
 
         assertThat(repo.getScalarType("Hello").isPresent()).isTrue();
 
-        repo.register(hello);
+        repo.register(HelloObject.HelloObjectScalar);
 
         expect.assertObservation();
     }

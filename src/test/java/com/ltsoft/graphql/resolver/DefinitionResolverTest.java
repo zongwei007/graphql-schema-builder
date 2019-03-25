@@ -4,6 +4,7 @@ import com.ltsoft.graphql.annotations.GraphQLType;
 import com.ltsoft.graphql.example.*;
 import com.ltsoft.graphql.scalars.ScalarTypeRepository;
 import graphql.language.*;
+import graphql.schema.GraphQLScalarType;
 import graphql.schema.idl.SchemaPrinter;
 import org.junit.Test;
 
@@ -21,10 +22,10 @@ public class DefinitionResolverTest {
     public void testScalars() {
         DefinitionResolver definitionResolver = new DefinitionResolver();
 
-        definitionResolver.scalar(new HelloObjectScalar(), HelloObject.class);
+        definitionResolver.scalar(HelloObject.HelloObjectScalar, HelloObject.class);
 
         assertThat(definitionResolver.getTypeRepository().findMappingScalarType(HelloObject.class))
-                .containsInstanceOf(HelloObjectScalar.class);
+                .containsInstanceOf(GraphQLScalarType.class);
     }
 
     @Test

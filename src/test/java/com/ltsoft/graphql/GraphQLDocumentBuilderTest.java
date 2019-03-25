@@ -1,7 +1,6 @@
 package com.ltsoft.graphql;
 
-import com.ltsoft.graphql.example.EnumObject;
-import com.ltsoft.graphql.example.EnumObjectExtension;
+import com.ltsoft.graphql.example.*;
 import graphql.language.Document;
 import org.junit.Test;
 
@@ -12,8 +11,14 @@ public class GraphQLDocumentBuilderTest {
     @Test
     public void build() {
         Document document = new GraphQLDocumentBuilder()
+                .addScalar(HelloObject.HelloObjectScalar, HelloObject.class)
                 .withType(EnumObject.class)
                 .withType(EnumObjectExtension.class)
+                .withType(NormalObject.class)
+                .withType(NormalInterface.class)
+                .withType(MutationInputObject.class)
+                .withType(NormalDirective.class)
+                .withType(UnionObject.class)
                 .builder()
                 .build();
 
