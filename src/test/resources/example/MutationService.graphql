@@ -5,6 +5,7 @@ type MutationObject {
 }
 
 type MutationService {
+  batch(items: [MutationInputObject]!): Int
   create(name: String!, parent: MutationInputObject): MutationObject
   delete: Int
   update(id: Long!, name: String, parent: MutationInputObject): MutationObject

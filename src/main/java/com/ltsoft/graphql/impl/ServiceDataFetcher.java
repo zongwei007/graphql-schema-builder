@@ -15,7 +15,7 @@ public class ServiceDataFetcher implements DataFetcher {
     private final Method method;
     private final List<ArgumentProvider<?>> providers;
 
-    public ServiceDataFetcher(Method method, Object instance, List<ArgumentProvider<?>> providers) {
+    public ServiceDataFetcher(Object instance, Method method, List<ArgumentProvider<?>> providers) {
         this.instance = instance;
         this.method = method;
         this.providers = providers;

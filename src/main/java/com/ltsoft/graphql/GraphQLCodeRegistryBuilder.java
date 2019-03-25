@@ -95,7 +95,7 @@ public final class GraphQLCodeRegistryBuilder {
             if (method.isAnnotationPresent(GraphQLDataFetcher.class)) {
                 Object serviceInstance = serviceInstanceFactory.provide(cls);
                 List<ArgumentProvider<?>> factories = resolveArgumentFactories(method);
-                ServiceDataFetcher dataFetcher = new ServiceDataFetcher(method, serviceInstance, factories);
+                ServiceDataFetcher dataFetcher = new ServiceDataFetcher(serviceInstance, method, factories);
 
                 builder.dataFetcher(coordinates(resolveTypeName(cls), dataFetcher.getFieldName()), dataFetcher);
             }
