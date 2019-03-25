@@ -6,7 +6,7 @@ import graphql.schema.TypeResolver;
 
 import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
 
-public class DefaultTypeResolver implements TypeResolver {
+public class JavaTypeResolver implements TypeResolver {
     @Override
     public GraphQLObjectType getType(TypeResolutionEnvironment env) {
         Object source = env.getObject();

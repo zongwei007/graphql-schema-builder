@@ -1,7 +1,7 @@
 package com.ltsoft.graphql;
 
 import com.ltsoft.graphql.annotations.*;
-import com.ltsoft.graphql.impl.DefaultDataFetcher;
+import com.ltsoft.graphql.impl.ServiceDataFetcher;
 import com.ltsoft.graphql.impl.GraphQLArgumentProvider;
 import com.ltsoft.graphql.impl.GraphQLDataFetchingEnvironmentProvider;
 import com.ltsoft.graphql.impl.GraphQLEnvironmentProvider;
@@ -95,7 +95,7 @@ public final class GraphQLCodeRegistryBuilder {
             if (method.isAnnotationPresent(GraphQLDataFetcher.class)) {
                 Object serviceInstance = serviceInstanceFactory.provide(cls);
                 List<ArgumentProvider<?>> factories = resolveArgumentFactories(method);
-                DefaultDataFetcher dataFetcher = new DefaultDataFetcher(method, serviceInstance, factories);
+                ServiceDataFetcher dataFetcher = new ServiceDataFetcher(method, serviceInstance, factories);
 
                 builder.dataFetcher(coordinates(resolveTypeName(cls), dataFetcher.getFieldName()), dataFetcher);
             }

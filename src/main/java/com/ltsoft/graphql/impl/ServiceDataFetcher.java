@@ -9,13 +9,13 @@ import java.util.List;
 
 import static com.ltsoft.graphql.resolver.ResolveUtil.resolveFieldName;
 
-public class DefaultDataFetcher implements DataFetcher {
+public class ServiceDataFetcher implements DataFetcher {
 
     private final Object instance;
     private final Method method;
     private final List<ArgumentProvider<?>> providers;
 
-    public DefaultDataFetcher(Method method, Object instance, List<ArgumentProvider<?>> providers) {
+    public ServiceDataFetcher(Method method, Object instance, List<ArgumentProvider<?>> providers) {
         this.instance = instance;
         this.method = method;
         this.providers = providers;

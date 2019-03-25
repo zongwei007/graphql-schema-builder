@@ -1,6 +1,6 @@
 package com.ltsoft.graphql.annotations;
 
-import com.ltsoft.graphql.impl.DefaultTypeResolver;
+import com.ltsoft.graphql.impl.JavaTypeResolver;
 import graphql.schema.TypeResolver;
 
 import java.lang.annotation.Documented;
@@ -17,6 +17,6 @@ public @interface GraphQLUnion {
 
     Class<?>[] possibleTypes();
 
-    Class<? extends TypeResolver> typeResolver() default DefaultTypeResolver.class;
+    Class<? extends TypeResolver> typeResolver() default JavaTypeResolver.class;
 
 }

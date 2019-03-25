@@ -25,6 +25,7 @@ public final class GraphQLSchemaBuilder {
 
     private final Map<GraphQLScalarType, Class<?>> scalarTypeMap = new HashMap<>();
     private final Set<String> packageNames = new HashSet<>();
+    private final Set<Class<?>> types = new HashSet<>();
     private final List<ArgumentProviderFactory<?>> argumentProviderFactories = new ArrayList<>();
     private final List<FieldVisibilityFilter> fieldFilters = new ArrayList<>();
     private final List<TypeVisibilityFilter> typeFilters = new ArrayList<>();
@@ -48,6 +49,11 @@ public final class GraphQLSchemaBuilder {
 
     public GraphQLSchemaBuilder withPackage(String... packages) {
         Collections.addAll(packageNames, packages);
+        return this;
+    }
+
+    public GraphQLSchemaBuilder withType(Class<?>... classes) {
+        Collections.addAll(types, classes);
         return this;
     }
 
@@ -92,11 +98,12 @@ public final class GraphQLSchemaBuilder {
     }
 
     public GraphQLSchema build() {
-        GraphQLDocumentBuilder documentBuilder = new GraphQLDocumentBuilder(serviceInstanceFactory);
+        GraphQLDocumentBuilder documentBuilder = new GraphQLDocumentBuilder();
         GraphQLCodeRegistryBuilder codeRegistryBuilder = new GraphQLCodeRegistryBuilder(serviceInstanceFactory);
         GraphQLRuntimeWiringBuilder runtimeWiringBuilder = new GraphQLRuntimeWiringBuilder();
 
-        packageNames.stream().flatMap(this::searchPackage)
+        Stream.concat(types.stream(), packageNames.stream().flatMap(this::searchPackage))
+                .distinct()
                 .forEach(cls -> {
                     documentBuilder.withType(cls);
                     codeRegistryBuilder.withType(cls);
@@ -126,7 +133,6 @@ public final class GraphQLSchemaBuilder {
 
         return new SchemaGenerator().makeExecutableSchema(options, typeDefinitionRegistry, runtimeWiring);
     }
-
 
     private Stream<? extends Class<?>> searchPackage(String packageName) {
         try {

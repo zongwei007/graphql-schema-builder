@@ -11,12 +11,7 @@ import java.util.*;
 public final class GraphQLDocumentBuilder {
 
     private final Set<Class<?>> types = new HashSet<>();
-    private final ServiceInstanceFactory serviceInstanceFactory;
     private final Map<GraphQLScalarType, Class<?>> scalarTypeMap = new HashMap<>();
-
-    public GraphQLDocumentBuilder(ServiceInstanceFactory serviceInstanceFactory) {
-        this.serviceInstanceFactory = serviceInstanceFactory;
-    }
 
     public GraphQLDocumentBuilder addScalar(GraphQLScalarType scalarType, Class<?> javaType) {
         scalarTypeMap.put(scalarType, javaType);
@@ -30,7 +25,7 @@ public final class GraphQLDocumentBuilder {
 
     public Document.Builder builder() {
         Document.Builder builder = Document.newDocument();
-        DefinitionResolver resolver = new DefinitionResolver(serviceInstanceFactory);
+        DefinitionResolver resolver = new DefinitionResolver();
 
         scalarTypeMap.forEach(resolver::scalar);
 
