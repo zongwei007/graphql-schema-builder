@@ -26,10 +26,12 @@ public class GraphQLEnvironmentProvider implements ArgumentProvider<Object> {
     }
 
     private static Method resolveMethod(String propName) {
+        String methodName = "get" + CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, propName);
+
         try {
-            return DataFetchingEnvironment.class.getMethod("get" + CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, propName));
+            return DataFetchingEnvironment.class.getMethod(methodName);
         } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException("");
+            throw new IllegalArgumentException(String.format("Can not find getter method '%s' from DataFetchingEnvironment", methodName), e);
         }
     }
 }
