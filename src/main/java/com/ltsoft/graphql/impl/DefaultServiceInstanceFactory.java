@@ -8,8 +8,7 @@ public class DefaultServiceInstanceFactory implements ServiceInstanceFactory {
         try {
             return cls.newInstance();
         } catch (InstantiationException | IllegalAccessException e) {
-            //TODO
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(String.format("Can not invoke constructor of class '%s'", cls), e);
         }
     }
 }
