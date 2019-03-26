@@ -1,7 +1,7 @@
 package com.ltsoft.graphql;
 
 import com.google.common.reflect.ClassPath;
-import com.ltsoft.graphql.impl.DefaultServiceInstanceFactory;
+import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import com.ltsoft.graphql.resolver.ResolveUtil;
 import com.ltsoft.graphql.visibility.FieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.TypeVisibilityFilter;
@@ -35,7 +35,7 @@ public final class GraphQLSchemaBuilder {
     private UnaryOperator<Document.Builder> documentProcessor = UnaryOperator.identity();
     private UnaryOperator<RuntimeWiring.Builder> runtimeWiringProcessor = UnaryOperator.identity();
     private SchemaGenerator.Options options = SchemaGenerator.Options.defaultOptions();
-    private ServiceInstanceFactory serviceInstanceFactory = new DefaultServiceInstanceFactory();
+    private InstanceFactory instanceFactory = new DefaultInstanceFactory();
 
     public GraphQLSchemaBuilder addScalar(GraphQLScalarType scalarType, Class<?> javaType) {
         scalarTypeMap.put(scalarType, javaType);
@@ -87,8 +87,8 @@ public final class GraphQLSchemaBuilder {
         return this;
     }
 
-    public GraphQLSchemaBuilder serviceInstanceFactory(ServiceInstanceFactory instanceFactory) {
-        this.serviceInstanceFactory = checkNotNull(instanceFactory);
+    public GraphQLSchemaBuilder serviceInstanceFactory(InstanceFactory instanceFactory) {
+        this.instanceFactory = checkNotNull(instanceFactory);
         return this;
     }
 
@@ -99,7 +99,7 @@ public final class GraphQLSchemaBuilder {
 
     public GraphQLSchema build() {
         GraphQLDocumentBuilder documentBuilder = new GraphQLDocumentBuilder();
-        GraphQLCodeRegistryBuilder codeRegistryBuilder = new GraphQLCodeRegistryBuilder(serviceInstanceFactory);
+        GraphQLCodeRegistryBuilder codeRegistryBuilder = new GraphQLCodeRegistryBuilder(instanceFactory);
         GraphQLRuntimeWiringBuilder runtimeWiringBuilder = new GraphQLRuntimeWiringBuilder();
 
         Stream.concat(types.stream(), packageNames.stream().flatMap(this::searchPackage))

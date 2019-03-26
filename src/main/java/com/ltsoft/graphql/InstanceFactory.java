@@ -1,6 +1,6 @@
 package com.ltsoft.graphql;
 
-public interface ServiceInstanceFactory {
+public interface InstanceFactory {
 
     <T> T provide(Class<T> cls);
 

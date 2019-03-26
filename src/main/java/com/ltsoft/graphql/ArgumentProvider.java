@@ -2,8 +2,9 @@ package com.ltsoft.graphql;
 
 import graphql.schema.DataFetchingEnvironment;
 
-import java.util.function.Function;
+@FunctionalInterface
+public interface ArgumentProvider<T> {
 
-public interface ArgumentProvider<R> extends Function<DataFetchingEnvironment, R> {
+    T provide(DataFetchingEnvironment environment);
 
 }

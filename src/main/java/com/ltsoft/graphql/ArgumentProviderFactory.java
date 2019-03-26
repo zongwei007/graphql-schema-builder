@@ -2,10 +2,10 @@ package com.ltsoft.graphql;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.function.BiFunction;
 
-public interface ArgumentProviderFactory<T> extends BiFunction<Parameter, Method, ArgumentProvider<T>> {
+public interface ArgumentProviderFactory<T> {
 
-    boolean isSupport(Parameter parameter, Method method);
+    boolean isSupport(Class<?> cls, Method method, Parameter parameter);
 
+    ArgumentProvider<T> build(Class<?> cls, Method method, Parameter parameter);
 }

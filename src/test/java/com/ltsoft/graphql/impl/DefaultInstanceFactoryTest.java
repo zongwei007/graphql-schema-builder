@@ -8,12 +8,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 
-public class DefaultServiceInstanceFactoryTest {
+public class DefaultInstanceFactoryTest {
 
     @Test
     public void provide() {
 
-        DefaultServiceInstanceFactory instanceFactory = new DefaultServiceInstanceFactory();
+        DefaultInstanceFactory instanceFactory = new DefaultInstanceFactory();
 
         MutationService service = instanceFactory.provide(MutationService.class);
 
@@ -21,7 +21,7 @@ public class DefaultServiceInstanceFactoryTest {
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> instanceFactory.provide(NotConstructor.class))
-                .withCauseInstanceOf(InstantiationException.class);
+                .withCauseInstanceOf(NoSuchMethodException.class);
 
     }
 }

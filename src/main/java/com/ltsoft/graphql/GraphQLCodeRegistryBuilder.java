@@ -1,16 +1,18 @@
 package com.ltsoft.graphql;
 
 import com.ltsoft.graphql.annotations.*;
-import com.ltsoft.graphql.impl.ServiceDataFetcher;
 import com.ltsoft.graphql.impl.GraphQLArgumentProvider;
-import com.ltsoft.graphql.impl.GraphQLDataFetchingEnvironmentProvider;
 import com.ltsoft.graphql.impl.GraphQLEnvironmentProvider;
+import com.ltsoft.graphql.impl.ServiceDataFetcher;
 import com.ltsoft.graphql.visibility.FieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.RuntimeFieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.TypeVisibilityFilter;
 import graphql.schema.DataFetchingEnvironment;
+import graphql.schema.FieldCoordinates;
 import graphql.schema.GraphQLCodeRegistry;
 import graphql.schema.TypeResolver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -23,15 +25,17 @@ import static graphql.schema.FieldCoordinates.coordinates;
 
 public final class GraphQLCodeRegistryBuilder {
 
+    private static Logger LOGGER = LoggerFactory.getLogger(GraphQLCodeRegistryBuilder.class);
+
     private final Set<Class<?>> types = new HashSet<>();
-    private final ServiceInstanceFactory serviceInstanceFactory;
+    private final InstanceFactory instanceFactory;
 
     private List<FieldVisibilityFilter> fieldFilters = new ArrayList<>();
     private List<TypeVisibilityFilter> typeFilters = new ArrayList<>();
     private List<ArgumentProviderFactory<?>> argumentFactories = new ArrayList<>();
 
-    public GraphQLCodeRegistryBuilder(ServiceInstanceFactory serviceInstanceFactory) {
-        this.serviceInstanceFactory = serviceInstanceFactory;
+    public GraphQLCodeRegistryBuilder(InstanceFactory instanceFactory) {
+        this.instanceFactory = instanceFactory;
     }
 
     public GraphQLCodeRegistryBuilder withType(Class<?>... classes) {
@@ -55,7 +59,7 @@ public final class GraphQLCodeRegistryBuilder {
     }
 
     public GraphQLCodeRegistry.Builder builder() {
-        checkNotNull(serviceInstanceFactory);
+        checkNotNull(instanceFactory);
 
         GraphQLCodeRegistry.Builder builder = GraphQLCodeRegistry.newCodeRegistry();
 
@@ -72,7 +76,7 @@ public final class GraphQLCodeRegistryBuilder {
         }
 
         if (cls.isAnnotationPresent(GraphQLInterface.class)) {
-            TypeResolver typeResolver = serviceInstanceFactory.provide(cls.getAnnotation(GraphQLInterface.class).typeResolver());
+            TypeResolver typeResolver = instanceFactory.provide(cls.getAnnotation(GraphQLInterface.class).typeResolver());
             builder.typeResolver(resolveTypeName(cls), typeResolver);
         }
 
@@ -85,7 +89,7 @@ public final class GraphQLCodeRegistryBuilder {
         }
 
         if (cls.isAnnotationPresent(GraphQLUnion.class)) {
-            TypeResolver typeResolver = serviceInstanceFactory.provide(cls.getAnnotation(GraphQLUnion.class).typeResolver());
+            TypeResolver typeResolver = instanceFactory.provide(cls.getAnnotation(GraphQLUnion.class).typeResolver());
             builder.typeResolver(resolveTypeName(cls), typeResolver);
         }
     }
@@ -93,43 +97,40 @@ public final class GraphQLCodeRegistryBuilder {
     private void loadDataFetcher(Class<?> cls, GraphQLCodeRegistry.Builder builder) {
         for (Method method : cls.getMethods()) {
             if (method.isAnnotationPresent(GraphQLDataFetcher.class)) {
-                Object serviceInstance = serviceInstanceFactory.provide(cls);
-                List<ArgumentProvider<?>> factories = resolveArgumentFactories(method);
+                Object serviceInstance = instanceFactory.provide(cls);
+                List<ArgumentProvider<?>> factories = resolveArgumentFactories(cls, method);
                 ServiceDataFetcher dataFetcher = new ServiceDataFetcher(serviceInstance, method, factories);
+                FieldCoordinates coordinates = coordinates(resolveTypeName(cls), dataFetcher.getFieldName());
 
-                builder.dataFetcher(coordinates(resolveTypeName(cls), dataFetcher.getFieldName()), dataFetcher);
+                builder.dataFetcher(coordinates, dataFetcher);
+
+                LOGGER.info("Bind GraphQL Field {}.{} to Java method {}#{}", coordinates.getTypeName(), coordinates.getFieldName(), cls.getName(), method.getName());
             }
         }
     }
 
-    private List<ArgumentProvider<?>> resolveArgumentFactories(Method method) {
+    private List<ArgumentProvider<?>> resolveArgumentFactories(Class<?> cls, Method method) {
         return Arrays.stream(method.getParameters())
                 .map(parameter -> {
                     ArgumentProvider<?> provider = argumentFactories.stream()
-                            .filter(ele -> ele.isSupport(parameter, method))
-                            .map(ele -> ele.apply(parameter, method))
+                            .filter(ele -> ele.isSupport(cls, method, parameter))
                             .findFirst()
+                            .map(ele -> ele.build(cls, method, parameter))
                             .orElse(null);
-
-                    return provider != null ? provider : buildDefaultArgumentProvider(parameter, method);
+                    //这里直接使用 orElse 会触发编译错误
+                    return provider != null ? provider : buildDefaultArgumentProvider(cls, method, parameter);
                 }).collect(Collectors.toList());
     }
 
-    private static ArgumentProvider<?> buildDefaultArgumentProvider(Parameter parameter, Method method) {
+    private ArgumentProvider<?> buildDefaultArgumentProvider(Class<?> cls, Method method, Parameter parameter) {
         if (parameter.isAnnotationPresent(GraphQLArgument.class)) {
-            return new GraphQLArgumentProvider(parameter);
+            return new GraphQLArgumentProvider(cls, method, parameter, instanceFactory);
         } else if (parameter.isAnnotationPresent(GraphQLEnvironment.class)) {
             return new GraphQLEnvironmentProvider(parameter.getAnnotation(GraphQLEnvironment.class));
         } else if (parameter.getType().equals(DataFetchingEnvironment.class)) {
-            return new GraphQLDataFetchingEnvironmentProvider();
+            return environment -> environment;
         } else {
-            throw new IllegalArgumentException(String.format(
-                    "Can not resolve parameter '%s#%s.%s' type with '%s'",
-                    method.getDeclaringClass().getName(),
-                    method.getName(),
-                    parameter.getName(),
-                    parameter.getType().getSimpleName())
-            );
+            return environment -> null;
         }
     }
 }

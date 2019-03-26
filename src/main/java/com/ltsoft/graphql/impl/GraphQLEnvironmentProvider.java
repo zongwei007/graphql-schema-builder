@@ -17,7 +17,7 @@ public class GraphQLEnvironmentProvider implements ArgumentProvider<Object> {
     }
 
     @Override
-    public Object apply(DataFetchingEnvironment environment) {
+    public Object provide(DataFetchingEnvironment environment) {
         try {
             return method.invoke(environment);
         } catch (IllegalAccessException | InvocationTargetException e) {

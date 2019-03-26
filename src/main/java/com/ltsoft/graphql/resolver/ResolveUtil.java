@@ -4,15 +4,14 @@ import com.google.common.base.CaseFormat;
 import com.google.common.base.Splitter;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.annotations.*;
+import graphql.language.Type;
 import graphql.language.*;
 import graphql.schema.GraphQLScalarType;
 import graphql.schema.idl.ScalarInfo;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.TypeVariable;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -67,7 +66,13 @@ public class ResolveUtil {
         return (T) result;
     }
 
-    private static Type resolveType(Class<?> cls) {
+    /**
+     * 解析 GraphQL 类型
+     *
+     * @param cls 需要解析的类
+     * @return GraphQL 类型
+     */
+    static TypeName resolveType(Class<?> cls) {
         return TypeName.newTypeName()
                 .comments(resolveComment(cls))
                 .name(resolveTypeName(cls))
@@ -351,10 +356,16 @@ public class ResolveUtil {
         return new SourceLocation(0, 0, name);
     }
 
-    static void checkAnnotation(Class<?> cls, Class<? extends Annotation> annotationClass) {
+    /**
+     * 检测 Java 类型是否按指定注解声明了 GraphQL 类型。支持 GraphQLTypeExtension
+     *
+     * @param cls             Java 类型
+     * @param annotationClass 注解类型
+     */
+    public static boolean hasGraphQLAnnotation(Class<?> cls, Class<? extends Annotation> annotationClass) {
         boolean isExtensionType = cls.isAnnotationPresent(GraphQLTypeExtension.class) && cls.getAnnotation(GraphQLTypeExtension.class).value().isAnnotationPresent(annotationClass);
 
-        checkArgument(cls.isAnnotationPresent(annotationClass) || isExtensionType);
+        return cls.isAnnotationPresent(annotationClass) || isExtensionType;
     }
 
     private static Map<String, GraphQLScalarType> STANDARD_SCALAR_MAP;
@@ -395,11 +406,36 @@ public class ResolveUtil {
      * @return 是否支持
      */
     public static boolean canResolve(Class<?> cls) {
+        //抽象类不能作为解析入口
+        if (Modifier.isAbstract(cls.getModifiers())) {
+            return false;
+        }
+
         return cls.isAnnotationPresent(GraphQLType.class)
                 || cls.isAnnotationPresent(GraphQLInterface.class)
                 || cls.isAnnotationPresent(GraphQLInput.class)
                 || cls.isAnnotationPresent(GraphQLTypeExtension.class)
                 || cls.isAnnotationPresent(GraphQLUnion.class)
                 || cls.isAnnotationPresent(GraphQLDirectiveLocations.class);
+    }
+
+    public static Type replaceTypeName(Type inputType, TypeName replace) {
+        if (inputType instanceof NonNullType) {
+            NonNullType nonNullType = (NonNullType) inputType;
+
+            return nonNullType.transform(ele -> ele.type(replaceTypeName(nonNullType.getType(), replace)));
+        }
+
+        if (inputType instanceof ListType) {
+            ListType listType = (ListType) inputType;
+
+            return listType.transform(ele -> ele.type(replaceTypeName(listType.getType(), replace)));
+        }
+
+        if (inputType instanceof TypeName) {
+            return replace;
+        }
+
+        return inputType;
     }
 }

@@ -129,7 +129,7 @@ public class DefinitionResolver {
      */
     public EnumTypeDefinition enumeration(Class<?> cls) {
         checkArgument(cls.isEnum());
-        checkAnnotation(cls, GraphQLType.class);
+        checkArgument(hasGraphQLAnnotation(cls, GraphQLType.class));
 
         List<EnumValueDefinition> definitions = Arrays.stream(cls.getFields())
                 .map(field -> EnumValueDefinition.newEnumValueDefinition()
@@ -156,7 +156,7 @@ public class DefinitionResolver {
      * @return GraphQL Interface
      */
     public InterfaceTypeDefinition iface(Class<?> cls) {
-        checkAnnotation(cls, GraphQLInterface.class);
+        checkArgument(hasGraphQLAnnotation(cls, GraphQLInterface.class));
 
         return InterfaceTypeDefinition.newInterfaceTypeDefinition()
                 .comments(resolveComment(cls))
@@ -175,7 +175,7 @@ public class DefinitionResolver {
      * @return GraphQL Input
      */
     public InputObjectTypeDefinition input(Class<?> cls) {
-        checkAnnotation(cls, GraphQLInput.class);
+        checkArgument(hasGraphQLAnnotation(cls, GraphQLInput.class));
 
         return InputObjectTypeDefinition.newInputObjectDefinition()
                 .comments(resolveComment(cls))
@@ -194,7 +194,7 @@ public class DefinitionResolver {
      * @return GraphQL Object
      */
     public ObjectTypeDefinition object(Class<?> cls) {
-        checkAnnotation(cls, GraphQLType.class);
+        checkArgument(hasGraphQLAnnotation(cls, GraphQLType.class));
 
         return ObjectTypeDefinition.newObjectTypeDefinition()
                 .comments(resolveComment(cls))
@@ -221,11 +221,10 @@ public class DefinitionResolver {
      * @return GraphQL Union
      */
     public UnionTypeDefinition union(Class<?> cls) {
-        checkAnnotation(cls, GraphQLUnion.class);
+        checkArgument(hasGraphQLAnnotation(cls, GraphQLUnion.class));
 
         List<Type> possibleTypes = Arrays.stream(cls.getAnnotation(GraphQLUnion.class).possibleTypes())
-                .map(ResolveUtil::resolveTypeName)
-                .map(TypeName::new)
+                .map(ResolveUtil::resolveType)
                 .collect(Collectors.toList());
 
         return UnionTypeDefinition.newUnionTypeDefinition()
@@ -305,7 +304,7 @@ public class DefinitionResolver {
         return wrapGraphQLType(invokable.getReturnType(), cls -> typeRepository.findMappingScalarType(cls)
                 .map(ele -> new TypeName(ele.getName()))
                 //若无法识别为 ScalarType，则使用类型引用作为 OutputType
-                .orElse(new TypeName(resolveTypeName(cls))), isNotNull);
+                .orElse(resolveType(cls)), isNotNull);
     }
 
     /**
@@ -349,6 +348,10 @@ public class DefinitionResolver {
         Type inputType = resolveInputTypeDefinition(TypeToken.of(parameter.getParameterizedType()), isNotNull(parameter.getAnnotation(GraphQLNotNull.class), views));
 
         if (inputType != null) {
+            if (parameter.isAnnotationPresent(GraphQLMutationType.class)) {
+                inputType = replaceTypeName(inputType, resolveType(parameter.getAnnotation(GraphQLMutationType.class).value()));
+            }
+
             InputValueDefinition argument = InputValueDefinition.newInputValueDefinition()
                     .description(ResolveUtil.resolveDescription(parameter))
                     .defaultValue(resolveArgumentDefaultValue(parameter))
@@ -555,7 +558,7 @@ public class DefinitionResolver {
                 .map(ele -> new TypeName(ele.getName()))
                 .orElseGet(() -> {
                     if (cls.isAnnotationPresent(GraphQLInput.class) || cls.isEnum()) {
-                        return new TypeName(resolveTypeName(cls));
+                        return resolveType(cls);
                     }
 
                     return null;

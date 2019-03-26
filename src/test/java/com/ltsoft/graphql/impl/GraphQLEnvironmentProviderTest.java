@@ -24,7 +24,7 @@ public class GraphQLEnvironmentProviderTest {
         GraphQLEnvironmentProvider provider = new GraphQLEnvironmentProvider(param);
 
         //noinspection unchecked
-        assertThat(provider.apply(env)).isInstanceOf(Map.class)
+        assertThat(provider.provide(env)).isInstanceOf(Map.class)
                 .satisfies(val ->
                         assertThat(((Map<String, String>) val))
                                 .containsOnlyKeys("foo")

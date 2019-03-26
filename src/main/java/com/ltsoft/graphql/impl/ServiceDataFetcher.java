@@ -27,6 +27,6 @@ public class ServiceDataFetcher implements DataFetcher {
 
     @Override
     public Object get(DataFetchingEnvironment environment) throws Exception {
-        return method.invoke(instance, providers.stream().map(ele -> ele.apply(environment)).toArray());
+        return method.invoke(instance, providers.stream().map(ele -> ele.provide(environment)).toArray());
     }
 }
