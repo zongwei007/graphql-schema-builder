@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.ltsoft.graphql.resolver.ResolveUtil.resolveArgumentName;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveGenericType;
 
 @SuppressWarnings("UnstableApiUsage")
 public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
@@ -27,7 +28,7 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
     public BasicArgumentProvider(Class<?> cls, Method method, Parameter parameter) {
         checkArgument(parameter.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLArgument.class));
 
-        this.typeToken = TypeToken.of(parameter.getParameterizedType());
+        this.typeToken = resolveGenericType(cls, parameter.getParameterizedType());
         this.argumentName = resolveArgumentName(parameter);
 
         Class<?> rawType = typeToken.getRawType();

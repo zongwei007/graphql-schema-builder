@@ -438,4 +438,24 @@ public class ResolveUtil {
 
         return inputType;
     }
+
+    /**
+     * 解析泛型类型
+     *
+     * @param resolvingCls 定义有泛型信息的类
+     * @param type         解析类型
+     * @return 实际类型
+     */
+    @SuppressWarnings("UnstableApiUsage")
+    public static TypeToken<?> resolveGenericType(Class<?> resolvingCls, java.lang.reflect.Type type) {
+        TypeToken<?> typeToken = TypeToken.of(type);
+        TypeToken<?> resolvingTypeToken = TypeToken.of(resolvingCls);
+
+        if (type instanceof TypeVariable || typeToken.getRawType().getTypeParameters().length > 0) {
+            return resolvingTypeToken.resolveType(typeToken.getType());
+        }
+
+        return typeToken;
+    }
+
 }

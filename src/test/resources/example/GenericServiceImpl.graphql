@@ -1,0 +1,24 @@
+type GenericServiceImpl {
+  generic: MutationObject
+  genericList(list: [MutationInputObject]): [MutationObject]
+}
+
+type MutationObject {
+  id: Long!
+  name: String!
+  parent: MutationObject
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}
+
+input MutationInputObject {
+  id: Long!
+  name: String
+  parent: MutationInputObject
+}

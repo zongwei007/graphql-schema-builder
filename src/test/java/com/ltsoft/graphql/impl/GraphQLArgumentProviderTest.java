@@ -19,13 +19,6 @@ import static org.mockito.Mockito.when;
 
 public class GraphQLArgumentProviderTest {
 
-    private GraphQLArgumentProvider buildArgumentProvider(String name, Class<?>... argumentType) throws NoSuchMethodException {
-        Method method = ArgumentService.class.getMethod(name, argumentType);
-        Parameter parameter = method.getParameters()[0];
-
-        return new GraphQLArgumentProvider(ArgumentService.class, method, parameter, new DefaultInstanceFactory());
-    }
-
     @Test
     public void hello() throws Exception {
         GraphQLArgumentProvider provider = buildArgumentProvider("hello", String.class);
@@ -54,6 +47,7 @@ public class GraphQLArgumentProviderTest {
 
         Object argument = provider.provide(environment);
 
+        assertThat(provider.isGenericType()).isTrue();
         assertThat(argument).isInstanceOf(MutationObject.class)
                 .satisfies(object -> {
                     MutationObject mutationObject = (MutationObject) object;
@@ -76,6 +70,7 @@ public class GraphQLArgumentProviderTest {
 
         Object argument = provider.provide(environment);
 
+        assertThat(provider.getArgumentName()).isEqualTo("list");
         assertThat(argument).isInstanceOf(List.class);
         //noinspection unchecked
         assertThat((List) argument).containsOnly("a", "b", "c");
@@ -145,4 +140,10 @@ public class GraphQLArgumentProviderTest {
         assertThat(((MutationObject) argument).getId()).isEqualTo(1L);
     }
 
+    private GraphQLArgumentProvider buildArgumentProvider(String name, Class<?>... argumentType) throws NoSuchMethodException {
+        Method method = ArgumentService.class.getMethod(name, argumentType);
+        Parameter parameter = method.getParameters()[0];
+
+        return new GraphQLArgumentProvider(ArgumentService.class, method, parameter, new DefaultInstanceFactory());
+    }
 }

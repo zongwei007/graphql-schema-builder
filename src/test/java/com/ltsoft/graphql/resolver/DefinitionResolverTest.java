@@ -50,6 +50,17 @@ public class DefinitionResolverTest {
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/MutationService.graphql"));
     }
 
+    @Test
+    public void testGeneric() {
+        DefinitionResolver definitionResolver = new DefinitionResolver();
+
+        ObjectTypeDefinition service = definitionResolver.object(GenericServiceImpl.class);
+        ObjectTypeDefinition object = definitionResolver.object(MutationObject.class);
+        InputObjectTypeDefinition input = definitionResolver.input(MutationInputObject.class);
+
+        assertThat(printDefinition(definitionResolver, service, object, input))
+                .isEqualToIgnoringWhitespace(readSchemaExample("/example/GenericServiceImpl.graphql"));
+    }
 
     @Test
     public void testObjectExtension() {
