@@ -2,9 +2,9 @@ package com.ltsoft.graphql.impl;
 
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.ArgumentProvider;
+import com.ltsoft.graphql.annotations.GraphQLMutationType;
 import com.ltsoft.graphql.annotations.GraphQLType;
 import graphql.schema.DataFetchingEnvironment;
-import graphql.schema.GraphQLInputType;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -31,6 +31,10 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
         this.argumentName = resolveArgumentName(parameter);
 
         Class<?> rawType = typeToken.getRawType();
+        if (parameter.isAnnotationPresent(GraphQLMutationType.class)) {
+            rawType = parameter.getAnnotation(GraphQLMutationType.class).value();
+        }
+
         //非枚举且直接定义为 GraphQLType 的参数，才能识别为泛参数
         if (!rawType.isEnum() && rawType.isAnnotationPresent(GraphQLType.class)) {
             this.isGenericType = true;
@@ -48,11 +52,41 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
         if (value instanceof Collection) {
             return toCollection(value, typeToken, environment);
         } else if (value instanceof Map) {
-            //noinspection unchecked
-            return toBean((Map<String, Object>) value, typeToken, environment);
+            if (typeToken.isSubtypeOf(Map.class)) {
+                return toMap(value, typeToken);
+            } else {
+                //noinspection unchecked
+                return toBean((Map<String, Object>) value, typeToken, environment);
+            }
         } else {
             //noinspection unchecked
             return (T) value;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    protected T toMap(Object value, TypeToken<?> typeToken) {
+        checkArgument(value instanceof Map);
+
+        if (typeToken.isSupertypeOf(value.getClass())) {
+            return (T) value;
+        } else {
+            try {
+                Map<String, Object> source = (Map<String, Object>) value;
+                Map<String, Object> target;
+
+                if (typeToken.getRawType().equals(Map.class)) {
+                    target = new HashMap<>();
+                } else {
+                    target = (Map<String, Object>) typeToken.getRawType().getConstructor().newInstance();
+                }
+
+                target.putAll(source);
+
+                return (T) target;
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new IllegalArgumentException(e);
+            }
         }
     }
 
@@ -66,16 +100,26 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
 
         if (typeToken.getComponentType() != null) {
             rawType = typeToken.getComponentType();
-        } else if (typeToken.isSupertypeOf(Iterable.class)) {
+        } else if (typeToken.isSubtypeOf(Iterable.class)) {
             listType = typeToken.getRawType();
             rawType = typeToken.resolveType(listType.getTypeParameters()[0]);
         } else {
             throw new IllegalArgumentException(String.format("Can not resolve collection type of '%s'", typeToken));
         }
 
-        //noinspection unchecked
         Stream<?> resultStream = ((Collection<?>) value).stream()
-                .map(ele -> ele instanceof Map ? toBean((Map<String, Object>) ele, rawType, environment) : ele);
+                .map(ele -> {
+                    if (ele instanceof Map) {
+                        if (rawType.isSubtypeOf(Map.class)) {
+                            return toMap(ele, rawType);
+                        } else {
+                            //noinspection unchecked
+                            return toBean((Map<String, Object>) ele, rawType, environment);
+                        }
+                    } else {
+                        return ele;
+                    }
+                });
 
         //noinspection unchecked
         return (T) (isArray ? resultStream.toArray() : resultStream.collect(Collectors.toCollection(new CollectionSupplier(listType))));

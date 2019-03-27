@@ -31,9 +31,9 @@ public final class ScalarTypeRepository {
 
     public ScalarTypeRepository() {
         register(ExtendedScalars.Json);
-        register(ExtendedScalars.Object);
         //ExtendedScalars.URL 类型依赖了 okhttp3，感觉太重了……
 
+        register(Map.class, ExtendedScalars.Object);
         register(LocalDate.class, ExtendedScalars.Date);
         register(OffsetDateTime.class, ExtendedScalars.DateTime);
         register(OffsetTime.class, ExtendedScalars.Time);
