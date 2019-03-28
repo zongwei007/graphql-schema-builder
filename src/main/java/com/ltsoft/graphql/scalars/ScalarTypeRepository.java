@@ -5,6 +5,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.ImmutableSet;
 import graphql.Scalars;
 import graphql.language.ScalarTypeDefinition;
 import graphql.scalars.ExtendedScalars;
@@ -30,9 +31,6 @@ public final class ScalarTypeRepository {
     private BiMap<Class<?>, GraphQLScalarType> javaTypeMap = HashBiMap.create();
 
     public ScalarTypeRepository() {
-        register(ExtendedScalars.Json);
-        //ExtendedScalars.URL 类型依赖了 okhttp3，感觉太重了……
-
         register(Map.class, ExtendedScalars.Object);
         register(LocalDate.class, ExtendedScalars.Date);
         register(OffsetDateTime.class, ExtendedScalars.DateTime);
@@ -62,22 +60,21 @@ public final class ScalarTypeRepository {
         mapping(Character.class, Scalars.GraphQLChar);
     }
 
-    public ScalarTypeRepository register(GraphQLScalarType... types) {
+    void register(GraphQLScalarType... types) {
         for (GraphQLScalarType type : types) {
             if (scalarTypeMap.putIfAbsent(type.getName(), type) != null) {
                 LOGGER.warn("GraphQLScalarType {} has been registered", type.getName());
             }
 
-            typeDefinitionMap.put(type.getName(), ScalarTypeDefinition.newScalarTypeDefinition().name(type.getName()).build());
+            typeDefinitionMap.putIfAbsent(type.getName(), new ScalarTypeDefinition(type.getName()));
         }
-        return this;
     }
 
-    public ScalarTypeRepository mapping(Class<?> sourceType, GraphQLScalarType scalarType) {
+    private void mapping(Class<?> sourceType, GraphQLScalarType scalarType) {
         javaTypeMap.put(sourceType, scalarType);
-        return this;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public ScalarTypeRepository register(Class<?> sourceType, GraphQLScalarType scalarType) {
         mapping(sourceType, scalarType);
         register(scalarType);
@@ -97,16 +94,16 @@ public final class ScalarTypeRepository {
     }
 
     public Set<GraphQLScalarType> allExtensionTypes() {
-        return new HashSet<>(scalarTypeMap.values());
+        return ImmutableSet.copyOf(scalarTypeMap.values());
     }
 
     public Set<ScalarTypeDefinition> allExtensionTypeDefinitions() {
-        return new HashSet<>(typeDefinitionMap.values());
+        return ImmutableSet.copyOf(typeDefinitionMap.values());
     }
 
     private class ClassGraphQLScalarTypeCacheLoader extends CacheLoader<Class<?>, Optional<GraphQLScalarType>> {
         @Override
-        public Optional<GraphQLScalarType> load(Class<?> cls) {
+        public Optional<GraphQLScalarType> load(@SuppressWarnings("NullableProblems") Class<?> cls) {
             if (javaTypeMap.containsKey(cls)) {
                 return Optional.of(javaTypeMap.get(cls));
             }
