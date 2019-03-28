@@ -22,7 +22,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
 
 @SuppressWarnings("UnstableApiUsage")
-public class DefinitionResolver {
+public final class DefinitionResolver {
 
     private static Pattern SETTER_PREFIX = Pattern.compile("^set[A-Z]?\\S*");
 

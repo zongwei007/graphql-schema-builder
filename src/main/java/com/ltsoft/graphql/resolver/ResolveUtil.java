@@ -23,7 +23,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static graphql.schema.GraphQLList.list;
 import static graphql.schema.GraphQLNonNull.nonNull;
 
-public class ResolveUtil {
+public final class ResolveUtil {
 
     private static Pattern METHOD_NAME_PREFIX = Pattern.compile("^(is|get|set)([A-Z])");
 

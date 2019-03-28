@@ -43,8 +43,8 @@ type schema {
 enum EnumObject {
   #GraphQL Enum first
   first
+  no3
   second
-  third
 }
 
 input MutationInputObject {
