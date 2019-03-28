@@ -16,6 +16,12 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({TYPE, FIELD})
 public @interface GraphQLName {
 
+    String ROOT_SCHEMA = "schema";
+
+    String ROOT_QUERY = "Query";
+
+    String ROOT_MUTATION = "Mutation";
+
     String value();
 
 }

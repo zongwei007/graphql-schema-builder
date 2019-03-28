@@ -1,6 +1,6 @@
 package com.ltsoft.graphql.annotations;
 
-import graphql.schema.DataFetcherFactory;
+import com.ltsoft.graphql.DefaultDataFetcherFactory;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Inherited;
@@ -14,8 +14,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target(TYPE)
 @Inherited
-public @interface GraphQLDataFetcherFactory {
+public @interface GraphQLDefaultDataFetcher {
 
-    Class<? extends DataFetcherFactory<?>> value();
+    Class<? extends DefaultDataFetcherFactory> value();
 
 }

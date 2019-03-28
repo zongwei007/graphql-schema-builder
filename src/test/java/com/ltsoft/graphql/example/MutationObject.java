@@ -1,12 +1,11 @@
 package com.ltsoft.graphql.example;
 
-import com.ltsoft.graphql.annotations.GraphQLIgnore;
-import com.ltsoft.graphql.annotations.GraphQLMutationType;
-import com.ltsoft.graphql.annotations.GraphQLNotNull;
-import com.ltsoft.graphql.annotations.GraphQLType;
+import com.ltsoft.graphql.annotations.*;
+import com.ltsoft.graphql.impl.EmptyDataFetcherFactory;
 import com.ltsoft.graphql.view.CreatedView;
 
 @GraphQLType
+@GraphQLDefaultDataFetcher(EmptyDataFetcherFactory.class)
 public class MutationObject {
 
     @GraphQLIgnore(view = CreatedView.class)

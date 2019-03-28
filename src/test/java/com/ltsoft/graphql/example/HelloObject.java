@@ -11,6 +11,9 @@ public class HelloObject {
 
                 @Override
                 public String serialize(Object result) throws CoercingSerializeException {
+                    if (result instanceof String) {
+                        return (String) result;
+                    }
                     return ((HelloObject) result).getValue();
                 }
 

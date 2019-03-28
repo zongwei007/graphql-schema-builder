@@ -4,9 +4,9 @@ import com.google.common.reflect.ClassPath;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import com.ltsoft.graphql.resolver.ResolveUtil;
 import com.ltsoft.graphql.visibility.FieldVisibilityFilter;
+import com.ltsoft.graphql.visibility.RuntimeFieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.TypeVisibilityFilter;
 import graphql.language.Document;
-import graphql.schema.GraphQLCodeRegistry;
 import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.idl.RuntimeWiring;
@@ -31,7 +31,6 @@ public final class GraphQLSchemaBuilder {
     private final List<TypeVisibilityFilter> typeFilters = new ArrayList<>();
     private final List<TypeDefinitionRegistry> typeDefinitionRegistries = new ArrayList<>();
 
-    private UnaryOperator<GraphQLCodeRegistry.Builder> codeRegistryProcessor = UnaryOperator.identity();
     private UnaryOperator<Document.Builder> documentProcessor = UnaryOperator.identity();
     private UnaryOperator<RuntimeWiring.Builder> runtimeWiringProcessor = UnaryOperator.identity();
     private SchemaGenerator.Options options = SchemaGenerator.Options.defaultOptions();
@@ -72,11 +71,6 @@ public final class GraphQLSchemaBuilder {
         return this;
     }
 
-    public GraphQLSchemaBuilder codeRegistry(UnaryOperator<GraphQLCodeRegistry.Builder> builderUnaryOperator) {
-        this.codeRegistryProcessor = checkNotNull(builderUnaryOperator);
-        return this;
-    }
-
     public GraphQLSchemaBuilder document(UnaryOperator<Document.Builder> builderUnaryOperator) {
         this.documentProcessor = checkNotNull(builderUnaryOperator);
         return this;
@@ -87,7 +81,7 @@ public final class GraphQLSchemaBuilder {
         return this;
     }
 
-    public GraphQLSchemaBuilder serviceInstanceFactory(InstanceFactory instanceFactory) {
+    public GraphQLSchemaBuilder instanceFactory(InstanceFactory instanceFactory) {
         this.instanceFactory = checkNotNull(instanceFactory);
         return this;
     }
@@ -99,21 +93,18 @@ public final class GraphQLSchemaBuilder {
 
     public GraphQLSchema build() {
         GraphQLDocumentBuilder documentBuilder = new GraphQLDocumentBuilder();
-        GraphQLCodeRegistryBuilder codeRegistryBuilder = new GraphQLCodeRegistryBuilder();
         GraphQLRuntimeWiringBuilder runtimeWiringBuilder = new GraphQLRuntimeWiringBuilder();
 
         Stream.concat(types.stream(), packageNames.stream().flatMap(this::searchPackage))
                 .distinct()
                 .forEach(cls -> {
                     documentBuilder.withType(cls);
-                    codeRegistryBuilder.withType(cls);
                     runtimeWiringBuilder.withType(cls);
                 });
 
-        scalarTypeMap.forEach((scalar, type) -> {
-            documentBuilder.addScalar(scalar, type);
-            runtimeWiringBuilder.withScalar(scalar);
-        });
+        scalarTypeMap.forEach(documentBuilder::addScalar);
+
+        documentBuilder.getAllExtensionScalars().forEach(runtimeWiringBuilder::withScalar);
 
         Document document = documentProcessor.apply(documentBuilder.builder()).build();
         TypeDefinitionRegistry typeDefinitionRegistry = new SchemaParser().buildRegistry(document);
@@ -122,16 +113,13 @@ public final class GraphQLSchemaBuilder {
             typeDefinitionRegistry = typeDefinitionRegistry.merge(registry);
         }
 
-        codeRegistryBuilder
+        runtimeWiringBuilder
                 .setArgumentFactories(argumentProviderFactories)
-                .setFieldFilters(fieldFilters)
-                .setInstanceFactory(instanceFactory)
-                .setTypeDefinitionRegistry(typeDefinitionRegistry)
-                .setTypeFilters(typeFilters);
+                .setInstanceFactory(instanceFactory);
 
-        RuntimeWiring runtimeWiring = runtimeWiringProcessor.apply(runtimeWiringBuilder.builder())
-                .codeRegistry(codeRegistryProcessor.apply(codeRegistryBuilder.builder()))
-                .build();
+        RuntimeWiring runtimeWiring = runtimeWiringProcessor.apply(
+                runtimeWiringBuilder.builder().fieldVisibility(new RuntimeFieldVisibilityFilter(typeFilters, fieldFilters))
+        ).build();
 
         return new SchemaGenerator().makeExecutableSchema(options, typeDefinitionRegistry, runtimeWiring);
     }
