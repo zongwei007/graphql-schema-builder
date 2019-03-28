@@ -57,7 +57,7 @@ public final class DefinitionResolver {
                         .directives(enumTypeDefinition.getDirectives())
                         .enumValueDefinitions(enumTypeDefinition.getEnumValueDefinitions())
                         .ignoredChars(enumTypeDefinition.getIgnoredChars())
-                        .name(resolveTypeName(targetClass))
+                        .name(enumTypeDefinition.getName())
                         .sourceLocation(enumTypeDefinition.getSourceLocation())
                         .build();
             } else {
@@ -70,7 +70,7 @@ public final class DefinitionResolver {
                         .fieldDefinitions(objectTypeDefinition.getFieldDefinitions())
                         .ignoredChars(objectTypeDefinition.getIgnoredChars())
                         .implementz(objectTypeDefinition.getImplements())
-                        .name(resolveTypeName(targetClass))
+                        .name(objectTypeDefinition.getName())
                         .sourceLocation(objectTypeDefinition.getSourceLocation())
                         .build();
             }
@@ -85,7 +85,7 @@ public final class DefinitionResolver {
                     .directives(interfaceTypeDefinition.getDirectives())
                     .description(interfaceTypeDefinition.getDescription())
                     .ignoredChars(interfaceTypeDefinition.getIgnoredChars())
-                    .name(resolveTypeName(targetClass))
+                    .name(interfaceTypeDefinition.getName())
                     .sourceLocation(interfaceTypeDefinition.getSourceLocation())
                     .build();
         }
@@ -99,7 +99,7 @@ public final class DefinitionResolver {
                     .directives(inputObjectTypeDefinition.getDirectives())
                     .ignoredChars(inputObjectTypeDefinition.getIgnoredChars())
                     .inputValueDefinitions(inputObjectTypeDefinition.getInputValueDefinitions())
-                    .name(resolveTypeName(targetClass))
+                    .name(inputObjectTypeDefinition.getName())
                     .sourceLocation(inputObjectTypeDefinition.getSourceLocation())
                     .build();
         }
@@ -113,7 +113,7 @@ public final class DefinitionResolver {
                     .directives(unionTypeDefinition.getDirectives())
                     .ignoredChars(unionTypeDefinition.getIgnoredChars())
                     .memberTypes(unionTypeDefinition.getMemberTypes())
-                    .name(resolveTypeName(targetClass))
+                    .name(unionTypeDefinition.getName())
                     .sourceLocation(unionTypeDefinition.getSourceLocation())
                     .build();
         }

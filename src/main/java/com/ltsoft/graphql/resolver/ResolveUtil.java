@@ -81,12 +81,16 @@ public final class ResolveUtil {
     }
 
     /**
-     * 解析 GraphQL 类型名称
+     * 解析 GraphQL 类型名称。支持 @GraphQLTypeExtension 注解。
      *
      * @param cls 需要解析的类
      * @return 类型名称
      */
     public static String resolveTypeName(Class<?> cls) {
+        if (cls.isAnnotationPresent(GraphQLTypeExtension.class)) {
+            return resolveTypeName(cls.getAnnotation(GraphQLTypeExtension.class).value());
+        }
+
         return Optional.ofNullable(cls.getAnnotation(GraphQLName.class))
                 .map(GraphQLName::value)
                 .orElse(cls.getSimpleName());
@@ -407,7 +411,7 @@ public final class ResolveUtil {
      */
     public static boolean canResolve(Class<?> cls) {
         //抽象类不能作为解析入口
-        if (Modifier.isAbstract(cls.getModifiers())) {
+        if (!cls.isInterface() && Modifier.isAbstract(cls.getModifiers())) {
             return false;
         }
 
