@@ -1,5 +1,7 @@
 package com.ltsoft.graphql;
 
+import com.ltsoft.graphql.annotations.GraphQLArgument;
+import com.ltsoft.graphql.annotations.GraphQLType;
 import com.ltsoft.graphql.annotations.*;
 import com.ltsoft.graphql.impl.GraphQLArgumentProvider;
 import com.ltsoft.graphql.impl.GraphQLEnvironmentProvider;
@@ -7,10 +9,10 @@ import com.ltsoft.graphql.impl.ServiceDataFetcher;
 import com.ltsoft.graphql.visibility.FieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.RuntimeFieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.TypeVisibilityFilter;
-import graphql.schema.DataFetchingEnvironment;
-import graphql.schema.FieldCoordinates;
-import graphql.schema.GraphQLCodeRegistry;
-import graphql.schema.TypeResolver;
+import graphql.language.FieldDefinition;
+import graphql.language.ObjectTypeDefinition;
+import graphql.schema.*;
+import graphql.schema.idl.TypeDefinitionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +20,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
@@ -28,15 +31,12 @@ public final class GraphQLCodeRegistryBuilder {
     private static Logger LOGGER = LoggerFactory.getLogger(GraphQLCodeRegistryBuilder.class);
 
     private final Set<Class<?>> types = new HashSet<>();
-    private final InstanceFactory instanceFactory;
+    private InstanceFactory instanceFactory;
+    private TypeDefinitionRegistry typeDefinitionRegistry;
 
     private List<FieldVisibilityFilter> fieldFilters = new ArrayList<>();
     private List<TypeVisibilityFilter> typeFilters = new ArrayList<>();
     private List<ArgumentProviderFactory<?>> argumentFactories = new ArrayList<>();
-
-    public GraphQLCodeRegistryBuilder(InstanceFactory instanceFactory) {
-        this.instanceFactory = instanceFactory;
-    }
 
     public GraphQLCodeRegistryBuilder withType(Class<?>... classes) {
         Collections.addAll(types, classes);
@@ -58,8 +58,19 @@ public final class GraphQLCodeRegistryBuilder {
         return this;
     }
 
+    public GraphQLCodeRegistryBuilder setInstanceFactory(InstanceFactory instanceFactory) {
+        this.instanceFactory = instanceFactory;
+        return this;
+    }
+
+    public GraphQLCodeRegistryBuilder setTypeDefinitionRegistry(TypeDefinitionRegistry typeDefinitionRegistry) {
+        this.typeDefinitionRegistry = typeDefinitionRegistry;
+        return this;
+    }
+
     public GraphQLCodeRegistry.Builder builder() {
         checkNotNull(instanceFactory);
+        checkNotNull(typeDefinitionRegistry);
 
         GraphQLCodeRegistry.Builder builder = GraphQLCodeRegistry.newCodeRegistry();
 
@@ -92,6 +103,10 @@ public final class GraphQLCodeRegistryBuilder {
             TypeResolver typeResolver = instanceFactory.provide(cls.getAnnotation(GraphQLUnion.class).typeResolver());
             builder.typeResolver(resolveTypeName(cls), typeResolver);
         }
+
+        if (cls.isAnnotationPresent(GraphQLDataFetcherFactory.class)) {
+            loadDataFetcherFactory(cls, builder);
+        }
     }
 
     private void loadDataFetcher(Class<?> cls, GraphQLCodeRegistry.Builder builder) {
@@ -107,6 +122,28 @@ public final class GraphQLCodeRegistryBuilder {
                 LOGGER.info("Bind GraphQL Field {}.{} to Java method {}#{}", coordinates.getTypeName(), coordinates.getFieldName(), cls.getName(), method.getName());
             }
         }
+    }
+
+    private void loadDataFetcherFactory(Class<?> cls, GraphQLCodeRegistry.Builder builder) {
+        String typeName = resolveTypeName(cls);
+        Class<? extends DataFetcherFactory<?>> factoryCls = cls.getAnnotation(GraphQLDataFetcherFactory.class).value();
+
+        Stream<FieldDefinition> objectTypeFields = typeDefinitionRegistry.getType(typeName, ObjectTypeDefinition.class)
+                .map(typeDefinition -> typeDefinition.getFieldDefinitions().stream())
+                .orElse(Stream.of());
+
+        Stream<FieldDefinition> extObjectTypeFields = typeDefinitionRegistry.objectTypeExtensions()
+                .getOrDefault(typeName, Collections.emptyList()).stream()
+                .flatMap(typeDefinition -> typeDefinition.getFieldDefinitions().stream());
+
+        Stream.concat(objectTypeFields, extObjectTypeFields).forEach(fieldDefinition -> {
+                    FieldCoordinates coordinate = coordinates(typeName, fieldDefinition.getName());
+
+                    if (!builder.hasDataFetcher(coordinate)) {
+                        builder.dataFetcher(coordinate, instanceFactory.provide(factoryCls));
+                    }
+                }
+        );
     }
 
     private List<ArgumentProvider<?>> resolveArgumentFactories(Class<?> cls, Method method) {

@@ -99,7 +99,7 @@ public final class GraphQLSchemaBuilder {
 
     public GraphQLSchema build() {
         GraphQLDocumentBuilder documentBuilder = new GraphQLDocumentBuilder();
-        GraphQLCodeRegistryBuilder codeRegistryBuilder = new GraphQLCodeRegistryBuilder(instanceFactory);
+        GraphQLCodeRegistryBuilder codeRegistryBuilder = new GraphQLCodeRegistryBuilder();
         GraphQLRuntimeWiringBuilder runtimeWiringBuilder = new GraphQLRuntimeWiringBuilder();
 
         Stream.concat(types.stream(), packageNames.stream().flatMap(this::searchPackage))
@@ -115,21 +115,23 @@ public final class GraphQLSchemaBuilder {
             runtimeWiringBuilder.withScalar(scalar);
         });
 
-        codeRegistryBuilder
-                .setArgumentFactories(argumentProviderFactories)
-                .setFieldFilters(fieldFilters)
-                .setTypeFilters(typeFilters);
-
         Document document = documentProcessor.apply(documentBuilder.builder()).build();
         TypeDefinitionRegistry typeDefinitionRegistry = new SchemaParser().buildRegistry(document);
-
-        RuntimeWiring runtimeWiring = runtimeWiringProcessor.apply(runtimeWiringBuilder.builder())
-                .codeRegistry(codeRegistryProcessor.apply(codeRegistryBuilder.builder()))
-                .build();
 
         for (TypeDefinitionRegistry registry : typeDefinitionRegistries) {
             typeDefinitionRegistry = typeDefinitionRegistry.merge(registry);
         }
+
+        codeRegistryBuilder
+                .setArgumentFactories(argumentProviderFactories)
+                .setFieldFilters(fieldFilters)
+                .setInstanceFactory(instanceFactory)
+                .setTypeDefinitionRegistry(typeDefinitionRegistry)
+                .setTypeFilters(typeFilters);
+
+        RuntimeWiring runtimeWiring = runtimeWiringProcessor.apply(runtimeWiringBuilder.builder())
+                .codeRegistry(codeRegistryProcessor.apply(codeRegistryBuilder.builder()))
+                .build();
 
         return new SchemaGenerator().makeExecutableSchema(options, typeDefinitionRegistry, runtimeWiring);
     }
