@@ -9,3 +9,9 @@ jdk:
 
 script:
   - mvn test -B
+
+deploy:
+  provider: script
+  script: bash scripts/deploy.sh
+  on:
+    branch: master

@@ -17,6 +17,19 @@
         <mockito-core.version>2.22.0</mockito-core.version>
     </properties>
 
+    <distributionManagement>
+        <repository>
+            <id>private-nexus-releases</id>
+            <!--suppress MavenModelInspection -->
+            <url>${env.CI_PRIVATE_NEXUS_URL}/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>private-nexus-releases</id>
+            <!--suppress MavenModelInspection -->
+            <url>${env.CI_PRIVATE_NEXUS_URL}/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <dependencies>
         <dependency>
             <groupId>com.graphql-java</groupId>
