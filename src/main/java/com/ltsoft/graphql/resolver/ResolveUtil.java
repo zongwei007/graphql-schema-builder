@@ -2,9 +2,11 @@ package com.ltsoft.graphql.resolver;
 
 import com.google.common.base.CaseFormat;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.HashBiMap;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.GraphQLDirectiveBuilder;
+import com.ltsoft.graphql.GraphQLNameProvider;
 import com.ltsoft.graphql.annotations.*;
 import com.ltsoft.graphql.impl.DefaultDirectiveBuilder;
 import graphql.introspection.Introspection;
@@ -98,6 +100,22 @@ public final class ResolveUtil {
         return Optional.ofNullable(cls.getAnnotation(GraphQLName.class))
                 .map(GraphQLName::value)
                 .orElse(cls.getSimpleName());
+    }
+
+    public static String resolveFieldName(Class<?> resolvingCls, Method method, Field field) {
+        if (resolvingCls.isAnnotationPresent(GraphQLNameFactory.class)) {
+            Class<? extends GraphQLNameProvider> providerType = resolvingCls.getAnnotation(GraphQLNameFactory.class).value();
+            try {
+                GraphQLNameProvider provider = providerType.getConstructor().newInstance();
+                String name = provider.provide(resolvingCls, method, field);
+
+                return Strings.isNullOrEmpty(name) ? resolveFieldName(method, field) : name;
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new IllegalArgumentException(String.format("Can not construct GraphQLNameProvider '%s'", providerType.getName()), e);
+            }
+        }
+
+        return resolveFieldName(method, field);
     }
 
     /**
@@ -356,7 +374,7 @@ public final class ResolveUtil {
                 || cls.isAnnotationPresent(GraphQLDirectiveLocations.class);
     }
 
-    public static Type replaceTypeName(Type inputType, TypeName replace) {
+    static Type replaceTypeName(Type inputType, TypeName replace) {
         if (inputType instanceof NonNullType) {
             NonNullType nonNullType = (NonNullType) inputType;
 

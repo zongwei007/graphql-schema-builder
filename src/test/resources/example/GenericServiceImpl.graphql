@@ -1,6 +1,6 @@
 type GenericServiceImpl {
   generic: MutationObject
-  genericList(list: [MutationInputObject]): [MutationObject]
+  genericInputList(list: [MutationInputObject]): [MutationObject]
 }
 
 type MutationObject {

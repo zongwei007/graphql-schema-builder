@@ -284,7 +284,7 @@ public final class DefinitionResolver {
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
                 .inputValueDefinitions(resolveFieldInputs(resolvingCls, method))
-                .name(resolveFieldName(method, field))
+                .name(resolveFieldName(resolvingCls, method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
                 .type(resolveFieldType(resolvingCls, method, field))
                 .build();
