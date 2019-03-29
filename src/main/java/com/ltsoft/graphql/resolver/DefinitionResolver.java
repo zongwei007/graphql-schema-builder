@@ -1,6 +1,5 @@
 package com.ltsoft.graphql.resolver;
 
-import com.google.common.reflect.Invokable;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.annotations.*;
 import com.ltsoft.graphql.scalars.ScalarTypeRepository;
@@ -11,7 +10,10 @@ import graphql.schema.idl.TypeInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -29,7 +31,7 @@ public final class DefinitionResolver {
     private final ScalarTypeRepository typeRepository = new ScalarTypeRepository();
 
     public DirectiveDefinition directive(Class<?> cls) {
-        checkArgument(cls.isAnnotationPresent(GraphQLDirectiveLocations.class));
+        checkArgument(cls.isAnnotationPresent(GraphQLDirective.class));
 
         return DirectiveDefinition.newDirectiveDefinition()
                 .comments(resolveComment(cls))
@@ -327,9 +329,11 @@ public final class DefinitionResolver {
 
     private List<InputValueDefinition> resolveDirectiveArguments(Class<?> cls) {
         return Arrays.stream(cls.getMethods())
+                .filter(method -> method.getDeclaringClass().equals(cls))
+                .filter(method -> !method.isAnnotationPresent(GraphQLIgnore.class))
                 .map(method -> InputValueDefinition.newInputValueDefinition()
                         .comments(resolveComment(method, null))
-                        .defaultValue(resolveInputDefaultValue(method.getAnnotation(GraphQLDefaultValue.class), Invokable.from(method).getReturnType()))
+                        .defaultValue(resolveInputDefaultValue(method.getAnnotation(GraphQLDefaultValue.class), TypeToken.of(method.getGenericReturnType())))
                         .name(method.getName())
                         .sourceLocation(resolveSourceLocation(method, null))
                         .type(resolveFieldType(cls, method, null))
@@ -568,71 +572,6 @@ public final class DefinitionResolver {
 
                     return null;
                 }), isNotNull);
-    }
-
-    private List<Argument> resolveDirectiveArguments(String[] arguments, Class<?> type) {
-        List<InputValueDefinition> definitions = resolveDirectiveArguments(type);
-
-        return Arrays.stream(arguments)
-                .map(ele -> Arrays.stream(ele.split(":")).map(String::trim).toArray(String[]::new))
-                .filter(items -> items.length == 2)
-                .map(items -> {
-                    String key = items[0];
-                    String val = items[1];
-
-                    InputValueDefinition definition = definitions.stream()
-                            .filter(arg -> arg.getName().equals(key))
-                            .findFirst()
-                            .orElse(null);
-
-                    if (definition != null) {
-                        graphql.schema.GraphQLType graphQLType = buildTypeFromAST(definition.getType(), typeName ->
-                                typeRepository.getScalarType(typeName)
-                                        .orElse(getStandardScalarType(typeName).orElse(null)));
-
-                        if (graphQLType != null) {
-                            return new Argument(key, AstValueHelper.astFromValue(val, graphQLType));
-                        }
-                    }
-
-                    return null;
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
-    private Stream<Directive> resolveDirective(GraphQLDirective[] annotationsByType) {
-        return Arrays.stream(annotationsByType)
-                .map(ele -> new Directive(resolveTypeName(ele.type()), resolveDirectiveArguments(ele.arguments(), ele.type())));
-    }
-
-    private List<Directive> resolveDirective(Class<?> cls) {
-        return resolveDirective(cls.getAnnotationsByType(GraphQLDirective.class))
-                .collect(Collectors.toList());
-    }
-
-    private List<Directive> resolveDirective(Method method, Field field) {
-        Stream<Directive> deprecate = resolveDeprecate(method, field);
-
-        Stream<Directive> fieldDirectives = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotationsByType(GraphQLDirective.class))
-                .map(this::resolveDirective)
-                .orElse(Stream.of());
-
-        Stream<Directive> methodDirectives = Optional.ofNullable(method)
-                .map(ele -> ele.getAnnotationsByType(GraphQLDirective.class))
-                .map(this::resolveDirective)
-                .orElse(Stream.of());
-
-        return Stream.concat(deprecate, Stream.concat(fieldDirectives, methodDirectives)).collect(Collectors.toList());
-    }
-
-    private List<Directive> resolveDirective(Parameter parameter) {
-        Stream<Directive> deprecate = resolveDeprecate(parameter);
-
-        Stream<Directive> paramDirectives = resolveDirective(parameter.getAnnotationsByType(GraphQLDirective.class));
-
-        return Stream.concat(deprecate, paramDirectives).collect(Collectors.toList());
     }
 
     /**

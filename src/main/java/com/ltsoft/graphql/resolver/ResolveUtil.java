@@ -2,14 +2,20 @@ package com.ltsoft.graphql.resolver;
 
 import com.google.common.base.CaseFormat;
 import com.google.common.base.Splitter;
+import com.google.common.collect.HashBiMap;
 import com.google.common.reflect.TypeToken;
+import com.ltsoft.graphql.GraphQLDirectiveBuilder;
 import com.ltsoft.graphql.annotations.*;
+import com.ltsoft.graphql.impl.DefaultDirectiveBuilder;
+import graphql.introspection.Introspection;
 import graphql.language.Type;
 import graphql.language.*;
 import graphql.schema.GraphQLScalarType;
 import graphql.schema.idl.ScalarInfo;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.*;
 import java.util.*;
@@ -20,12 +26,10 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static graphql.schema.GraphQLList.list;
-import static graphql.schema.GraphQLNonNull.nonNull;
 
 public final class ResolveUtil {
 
-    private static Pattern METHOD_NAME_PREFIX = Pattern.compile("^(is|get|set)([A-Z])");
+    private static final Pattern METHOD_NAME_PREFIX = Pattern.compile("^(is|get|set)([A-Z])");
 
     /**
      * 包装 GraphQL 类型。自动对 Java 类型进行拆包，判断是否为 List 类型并重新封装。
@@ -190,56 +194,6 @@ public final class ResolveUtil {
     }
 
     /**
-     * 解析 GraphQL 字段作废原因
-     *
-     * @param method 所需要解析的方法
-     * @param field  关联字段
-     * @return 作废原因
-     */
-    static Stream<Directive> resolveDeprecate(Method method, Field field) {
-        String reason = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLDeprecate.class))
-                .map(GraphQLDeprecate::value)
-                .orElseGet(() ->
-                        Optional.ofNullable(method)
-                                .map(ele -> ele.getAnnotation(GraphQLDeprecate.class))
-                                .map(GraphQLDeprecate::value)
-                                .orElse(null)
-                );
-
-        if (reason != null) {
-            return Stream.of(Directive.newDirective()
-                    .name("deprecated")
-                    .arguments(Collections.singletonList(new Argument("reason", new StringValue(reason))))
-                    .sourceLocation(resolveSourceLocation(method, field))
-                    .build());
-        }
-
-        return Stream.of();
-    }
-
-    /**
-     * 解析 GraphQL 参数作废原因
-     *
-     * @param parameter 所需要解析的参数
-     * @return 作废原因
-     */
-    static Stream<Directive> resolveDeprecate(Parameter parameter) {
-        String reason = Optional.ofNullable(parameter.getAnnotation(GraphQLDeprecate.class))
-                .map(GraphQLDeprecate::value)
-                .orElse(null);
-
-        if (reason != null) {
-            return Stream.of(Directive.newDirective()
-                    .name("deprecated")
-                    .arguments(Collections.singletonList(new Argument("reason", new StringValue(reason))))
-                    .build());
-        }
-
-        return Stream.of();
-    }
-
-    /**
      * 判断 GraphQLIgnore 注解是否生效
      *
      * @param ignore 注解声明
@@ -324,13 +278,6 @@ public final class ResolveUtil {
         return Collections.emptyList();
     }
 
-    static List<DirectiveLocation> resolveDirectiveLocation(Class<?> cls) {
-        return Optional.ofNullable(cls.getAnnotation(GraphQLDirectiveLocations.class))
-                .map(GraphQLDirectiveLocations::value)
-                .map(value -> Arrays.stream(value).map(ele -> new DirectiveLocation(ele.name())).collect(Collectors.toList()))
-                .orElse(null);
-    }
-
     /**
      * 模拟 SourceLocation，仅记录类名
      *
@@ -387,20 +334,6 @@ public final class ResolveUtil {
      */
     static Optional<GraphQLScalarType> getStandardScalarType(String name) {
         return Optional.ofNullable(STANDARD_SCALAR_MAP.get(name));
-    }
-
-    static graphql.schema.GraphQLType buildTypeFromAST(Type type, Function<String, graphql.schema.GraphQLType> provider) {
-        graphql.schema.GraphQLType innerType;
-
-        if (type instanceof ListType) {
-            innerType = buildTypeFromAST(((ListType) type).getType(), provider);
-            return innerType != null ? list(innerType) : null;
-        } else if (type instanceof NonNullType) {
-            innerType = buildTypeFromAST(((NonNullType) type).getType(), provider);
-            return innerType != null ? nonNull(innerType) : null;
-        }
-
-        return provider.apply(((TypeName) type).getName());
     }
 
     /**
@@ -462,4 +395,100 @@ public final class ResolveUtil {
         return typeToken;
     }
 
+    /**
+     * 解析枚举类型的值映射
+     *
+     * @param type 枚举类
+     * @return 枚举值的映射信息
+     */
+    public static HashBiMap<String, Object> resolveEnumValueMap(Class<?> type) {
+        Field[] fields = type.getFields();
+        Object[] constants = type.getEnumConstants();
+        HashBiMap<String, Object> result = HashBiMap.create(constants.length);
+
+        for (int i = 0, len = constants.length; i < len; i++) {
+            result.put(resolveFieldName(null, fields[i]), constants[i]);
+        }
+
+        return result;
+    }
+
+    private static Map<ElementType, Introspection.DirectiveLocation> LOCATION_MAP = new HashMap<>();
+
+    static {
+        LOCATION_MAP.put(ElementType.TYPE, Introspection.DirectiveLocation.OBJECT);
+        LOCATION_MAP.put(ElementType.FIELD, Introspection.DirectiveLocation.FIELD_DEFINITION);
+        LOCATION_MAP.put(ElementType.METHOD, Introspection.DirectiveLocation.FIELD_DEFINITION);
+        LOCATION_MAP.put(ElementType.PARAMETER, Introspection.DirectiveLocation.ARGUMENT_DEFINITION);
+    }
+
+    static List<DirectiveLocation> resolveDirectiveLocation(Class<?> cls) {
+        Stream<Introspection.DirectiveLocation> locationStream = Stream.of();
+
+        if (cls.isAnnotationPresent(GraphQLDirectiveLocations.class)) {
+            locationStream = Arrays.stream(cls.getAnnotation(GraphQLDirectiveLocations.class).value());
+        } else if (cls.isAnnotationPresent(Target.class)) {
+            locationStream = Arrays.stream(cls.getAnnotation(Target.class).value())
+                    .map(ele -> LOCATION_MAP.get(ele))
+                    .filter(Objects::nonNull);
+        }
+
+        return locationStream.map(ele -> new DirectiveLocation(ele.name())).collect(Collectors.toList());
+    }
+
+
+    private static final List<GraphQLDirectiveBuilder> DIRECTIVE_RESOLVERS = new ArrayList<>();
+
+    static {
+        DIRECTIVE_RESOLVERS.add(new DefaultDirectiveBuilder());
+    }
+
+    /**
+     * 注册指令解析器
+     *
+     * @param resolvers 指令解析器
+     */
+    public static void register(GraphQLDirectiveBuilder... resolvers) {
+        Collections.addAll(DIRECTIVE_RESOLVERS, resolvers);
+    }
+
+    private static Directive resolveDirective(Annotation annotation) {
+        //noinspection unchecked
+        return DIRECTIVE_RESOLVERS.stream()
+                .filter(ele -> ele.isSupport(annotation.annotationType()))
+                .findFirst()
+                .map(ele -> ele.builder(annotation).build())
+                .orElse(null);
+    }
+
+    private static List<Directive> resolveDirective(Annotation[] annotations) {
+        return Arrays.stream(annotations)
+                .map(ResolveUtil::resolveDirective)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    static List<Directive> resolveDirective(Class<?> cls) {
+        return resolveDirective(cls.getAnnotations());
+    }
+
+    static List<Directive> resolveDirective(Method method, Field field) {
+
+        Stream<Annotation> fieldAnnotations = Optional.ofNullable(field)
+                .map(ele -> Arrays.stream(ele.getAnnotations()))
+                .orElse(Stream.of());
+
+        Stream<Annotation> methodAnnotations = Optional.ofNullable(method)
+                .map(ele -> Arrays.stream(ele.getAnnotations()))
+                .orElse(Stream.of());
+
+        return Stream.concat(fieldAnnotations, methodAnnotations)
+                .map(ResolveUtil::resolveDirective)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    static List<Directive> resolveDirective(Parameter parameter) {
+        return resolveDirective(parameter.getAnnotations());
+    }
 }

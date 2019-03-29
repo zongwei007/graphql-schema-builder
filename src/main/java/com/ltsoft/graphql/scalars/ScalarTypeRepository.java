@@ -23,6 +23,18 @@ public final class ScalarTypeRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScalarTypeRepository.class);
 
+    private static final Map<Class<?>, Class<?>> PRIMITIVE_TYPE_MAP = new HashMap<>();
+
+    static {
+        PRIMITIVE_TYPE_MAP.put(boolean.class, Boolean.class);
+        PRIMITIVE_TYPE_MAP.put(byte.class, Byte.class);
+        PRIMITIVE_TYPE_MAP.put(short.class, Short.class);
+        PRIMITIVE_TYPE_MAP.put(int.class, Integer.class);
+        PRIMITIVE_TYPE_MAP.put(long.class, Long.class);
+        PRIMITIVE_TYPE_MAP.put(float.class, Float.class);
+        PRIMITIVE_TYPE_MAP.put(double.class, Double.class);
+    }
+
     private LoadingCache<Class<?>, Optional<GraphQLScalarType>> MAPPING_CACHE = CacheBuilder.newBuilder()
             .build(new ClassGraphQLScalarTypeCacheLoader());
 
@@ -90,7 +102,7 @@ public final class ScalarTypeRepository {
     }
 
     public Optional<GraphQLScalarType> findMappingScalarType(Class<?> cls) {
-        return MAPPING_CACHE.getUnchecked(cls);
+        return MAPPING_CACHE.getUnchecked(cls.isPrimitive() ? PRIMITIVE_TYPE_MAP.get(cls) : cls);
     }
 
     public Set<GraphQLScalarType> allExtensionTypes() {

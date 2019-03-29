@@ -13,8 +13,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({METHOD, FIELD})
 @Inherited
+@GraphQLDirective
+@GraphQLName("deprecated")
 public @interface GraphQLDeprecate {
 
+    @GraphQLName("reason")
     String value() default "";
 
 }

@@ -60,7 +60,7 @@ public final class GraphQLDocumentBuilder {
             return resolver.extension(cls);
         }
 
-        if (cls.isAnnotationPresent(GraphQLDirectiveLocations.class)) {
+        if (cls.isAnnotationPresent(GraphQLDirective.class)) {
             return resolver.directive(cls);
         }
 
