@@ -137,7 +137,7 @@ public final class DefinitionResolver {
                 .map(field -> EnumValueDefinition.newEnumValueDefinition()
                         .description(resolveDescription(null, field))
                         .directives(resolveDirective(null, field))
-                        .name(resolveFieldName(null, field))
+                        .name(resolveFieldName(cls, null, field))
                         .build())
                 .collect(Collectors.toList());
 
@@ -431,7 +431,7 @@ public final class DefinitionResolver {
                     .defaultValue(resolveFieldInputDefaultValue(method, field))
                     .description(resolveDescription(method, field))
                     .directives(resolveDirective(method, field))
-                    .name(resolveFieldName(method, field))
+                    .name(resolveFieldName(method.getDeclaringClass(), method, field))
                     .sourceLocation(resolveSourceLocation(method, field))
                     .type(resolveInputTypeDefinition(paramType, isNotNull(notNull, views)))
                     .build();
@@ -549,7 +549,7 @@ public final class DefinitionResolver {
                 .defaultValue(resolveFieldInputDefaultValue(method, field))
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
-                .name(resolveFieldName(method, field))
+                .name(resolveFieldName(method.getDeclaringClass(), method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
                 .type(inputType)
                 .build();

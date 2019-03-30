@@ -22,7 +22,7 @@ public class ServiceDataFetcher implements DataFetcher {
     }
 
     public String getFieldName() {
-        return resolveFieldName(method, null);
+        return resolveFieldName(method.getDeclaringClass(), method, null);
     }
 
     @Override

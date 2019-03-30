@@ -6,7 +6,6 @@ import com.google.common.base.Strings;
 import com.google.common.collect.HashBiMap;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.GraphQLDirectiveBuilder;
-import com.ltsoft.graphql.GraphQLNameProvider;
 import com.ltsoft.graphql.annotations.*;
 import com.ltsoft.graphql.impl.DefaultDirectiveBuilder;
 import graphql.introspection.Introspection;
@@ -21,6 +20,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -97,25 +97,16 @@ public final class ResolveUtil {
             return resolveTypeName(cls.getAnnotation(GraphQLTypeExtension.class).value());
         }
 
-        return Optional.ofNullable(cls.getAnnotation(GraphQLName.class))
-                .map(GraphQLName::value)
-                .orElse(cls.getSimpleName());
-    }
+        String typeName = cls.getSimpleName();
 
-    public static String resolveFieldName(Class<?> resolvingCls, Method method, Field field) {
-        if (resolvingCls.isAnnotationPresent(GraphQLNameFactory.class)) {
-            Class<? extends GraphQLNameProvider> providerType = resolvingCls.getAnnotation(GraphQLNameFactory.class).value();
-            try {
-                GraphQLNameProvider provider = providerType.getConstructor().newInstance();
-                String name = provider.provide(resolvingCls, method, field);
+        if (cls.isAnnotationPresent(GraphQLName.class)) {
+            GraphQLName name = cls.getAnnotation(GraphQLName.class);
+            typeName = Strings.isNullOrEmpty(name.value()) ? typeName : name.value();
 
-                return Strings.isNullOrEmpty(name) ? resolveFieldName(method, field) : name;
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                throw new IllegalArgumentException(String.format("Can not construct GraphQLNameProvider '%s'", providerType.getName()), e);
-            }
+            return formatName(cls.getAnnotation(GraphQLNameFormatter.class), typeName, cls);
         }
 
-        return resolveFieldName(method, field);
+        return typeName;
     }
 
     /**
@@ -125,7 +116,7 @@ public final class ResolveUtil {
      * @param field  方法匹配的字段
      * @return 字段名称
      */
-    public static String resolveFieldName(Method method, Field field) {
+    public static String resolveFieldName(Class<?> resolvingCls, Method method, Field field) {
         checkArgument(method != null || field != null);
 
         GraphQLName name = Optional.ofNullable(field)
@@ -136,15 +127,42 @@ public final class ResolveUtil {
                                 .orElse(null)
                 );
 
+        String fieldName;
+
         if (name != null) {
-            return name.value();
+            fieldName = name.value();
+        } else if (method != null) {
+            fieldName = simplifyName(method.getName());
+        } else {
+            fieldName = field.getName();
         }
 
-        if (method != null) {
-            return simplifyName(method.getName());
+        return formatName(resolvingCls.getAnnotation(GraphQLNameFormatter.class), fieldName, resolvingCls);
+    }
+
+    /**
+     * 格式化 GraphQL 类型/字段名称
+     *
+     * @param annotation 格式化声明
+     * @param name       类型/字段名称
+     * @param javaType   字段所属 Java 类型
+     * @return 格式化结果
+     */
+    private static String formatName(GraphQLNameFormatter annotation, String name, Class<?> javaType) {
+        if (annotation == null) {
+            return name;
         }
 
-        return field.getName();
+        Class<? extends BiFunction<String, Class<?>, String>> formatterType = annotation.value();
+
+        try {
+            BiFunction<String, Class<?>, String> formatter = formatterType.getConstructor().newInstance();
+            String result = formatter.apply(name, javaType);
+
+            return Strings.isNullOrEmpty(result) ? name : result;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new IllegalArgumentException(String.format("Can not construct name formatter '%s'", formatterType.getName()), e);
+        }
     }
 
     /**
@@ -425,7 +443,7 @@ public final class ResolveUtil {
         HashBiMap<String, Object> result = HashBiMap.create(constants.length);
 
         for (int i = 0, len = constants.length; i < len; i++) {
-            result.put(resolveFieldName(null, fields[i]), constants[i]);
+            result.put(resolveFieldName(type, null, fields[i]), constants[i]);
         }
 
         return result;

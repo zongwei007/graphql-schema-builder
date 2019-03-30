@@ -27,11 +27,13 @@ public class DefaultDirectiveBuilder extends BasicDirectiveBuilder<Annotation> {
 
         try {
             for (Method method : type.getMethods()) {
-                if (method.getDeclaringClass().equals(type) && !method.isAnnotationPresent(GraphQLIgnore.class)) {
+                Class<?> owner = method.getDeclaringClass();
+
+                if (owner.equals(type) && !method.isAnnotationPresent(GraphQLIgnore.class)) {
                     Object value = proxy.invoke(annotation, method, new Object[0]);
                     Object[] param = value.getClass().isArray() ? (Object[]) value : new Object[]{value};
 
-                    addArgument(resolveFieldName(method, null), param);
+                    addArgument(resolveFieldName(owner, method, null), param);
                 }
             }
         } catch (Throwable e) {
