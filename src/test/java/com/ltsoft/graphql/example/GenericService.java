@@ -1,7 +1,7 @@
 package com.ltsoft.graphql.example;
 
 import com.ltsoft.graphql.annotations.GraphQLArgument;
-import com.ltsoft.graphql.annotations.GraphQLNameFormatter;
+import com.ltsoft.graphql.annotations.GraphQLFieldName;
 import com.ltsoft.graphql.annotations.GraphQLType;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 @GraphQLType
-@GraphQLNameFormatter(GenericService.NameFormatter.class)
+@GraphQLFieldName(GenericService.NameFormatter.class)
 public abstract class GenericService<E, F extends E> {
 
     public E generic(@GraphQLArgument E input) {

@@ -97,16 +97,9 @@ public final class ResolveUtil {
             return resolveTypeName(cls.getAnnotation(GraphQLTypeExtension.class).value());
         }
 
-        String typeName = cls.getSimpleName();
-
-        if (cls.isAnnotationPresent(GraphQLName.class)) {
-            GraphQLName name = cls.getAnnotation(GraphQLName.class);
-            typeName = Strings.isNullOrEmpty(name.value()) ? typeName : name.value();
-
-            return formatName(cls.getAnnotation(GraphQLNameFormatter.class), typeName, cls);
-        }
-
-        return typeName;
+        return Optional.ofNullable(cls.getAnnotation(GraphQLName.class))
+                .map(GraphQLName::value)
+                .orElse(cls.getSimpleName());
     }
 
     /**
@@ -137,7 +130,7 @@ public final class ResolveUtil {
             fieldName = field.getName();
         }
 
-        return formatName(resolvingCls.getAnnotation(GraphQLNameFormatter.class), fieldName, resolvingCls);
+        return formatName(resolvingCls.getAnnotation(GraphQLFieldName.class), fieldName, resolvingCls);
     }
 
     /**
@@ -148,7 +141,7 @@ public final class ResolveUtil {
      * @param javaType   字段所属 Java 类型
      * @return 格式化结果
      */
-    private static String formatName(GraphQLNameFormatter annotation, String name, Class<?> javaType) {
+    private static String formatName(GraphQLFieldName annotation, String name, Class<?> javaType) {
         if (annotation == null) {
             return name;
         }
