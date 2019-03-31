@@ -10,6 +10,9 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+/**
+ * GraphQL Interface 类型
+ */
 @Documented
 @Retention(RUNTIME)
 @Target(TYPE)

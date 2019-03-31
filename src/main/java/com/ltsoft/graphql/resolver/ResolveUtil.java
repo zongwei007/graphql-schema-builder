@@ -20,8 +20,11 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -225,14 +228,35 @@ public final class ResolveUtil {
     /**
      * 判断 GraphQLIgnore 注解是否生效
      *
-     * @param ignore 注解声明
+     * @param method 当前方法
+     * @param field  映射字段
      * @param views  当前 GraphQLView 上下文
      * @return 是否已忽略
      */
-    static boolean isIgnore(GraphQLIgnore ignore, Class<?>[] views) {
-        return Optional.ofNullable(ignore)
+    static boolean isNotIgnore(Method method, Field field, Class<?>[] views) {
+        GraphQLIgnore ignore = null;
+        if (field != null) {
+            ignore = field.getAnnotation(GraphQLIgnore.class);
+        }
+
+        if (ignore == null && method != null) {
+            ignore = method.getAnnotation(GraphQLIgnore.class);
+        }
+
+        return !Optional.ofNullable(ignore)
                 .filter(ele -> ele.view().length == 0 || Arrays.stream(views).anyMatch(view -> Arrays.stream(ele.view()).anyMatch(view::isAssignableFrom)))
                 .isPresent();
+    }
+
+    /**
+     * 判断 GraphQLIgnore 注解是否生效。如果 GraphQLIgnore 声明了 View 信息，将判定为无效。
+     *
+     * @param method 当前方法
+     * @param field  映射字段
+     * @return 是否已忽略
+     */
+    static boolean isNotIgnore(Method method, Field field) {
+        return isNotIgnore(method, field, new Class[0]);
     }
 
     /**
@@ -271,7 +295,8 @@ public final class ResolveUtil {
      * @param name 方法名称
      * @return fieldName
      */
-    static String simplifyName(String name) {
+    @SuppressWarnings("WeakerAccess")
+    public static String simplifyName(String name) {
         return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, METHOD_NAME_PREFIX.matcher(name).replaceFirst("$2"));
     }
 
@@ -477,6 +502,7 @@ public final class ResolveUtil {
      *
      * @param resolvers 指令解析器
      */
+    @SuppressWarnings("unused")
     public static void register(GraphQLDirectiveBuilder... resolvers) {
         Collections.addAll(DIRECTIVE_RESOLVERS, resolvers);
     }
@@ -519,5 +545,57 @@ public final class ResolveUtil {
 
     static List<Directive> resolveDirective(Parameter parameter) {
         return resolveDirective(parameter.getAnnotations());
+    }
+
+    /**
+     * 解析 Object 所有的扩展类型
+     *
+     * @param typeToken Object 类型信息
+     * @return 所有扩展类型信息
+     */
+    @SuppressWarnings("UnstableApiUsage")
+    static Stream<Class<?>> resolveClassExtensions(TypeToken<?> typeToken, Predicate<Class<?>> filter) {
+        Stream<? extends Class<?>> withParents = typeToken.getTypes().stream()
+                .map(TypeToken::getRawType)
+                .filter(filter);
+
+        Class<?>[] fieldExtensions = Optional.ofNullable(typeToken.getRawType().getAnnotation(GraphQLFieldExtension.class))
+                .map(GraphQLFieldExtension::value)
+                .orElse(new Class[0]);
+
+        return Stream.concat(withParents, Arrays.stream(fieldExtensions));
+    }
+
+    static <T> Stream<T> resolveFieldStream(Class<?> cls, BiPredicate<Method, Field> filter, BiFunction<Method, Field, T> consumer) {
+        Method[] methods = cls.getMethods();
+        Field[] fields = cls.getDeclaredFields();
+        Map<String, Field> fieldNameMap = Arrays.stream(fields)
+                .collect(Collectors.toMap(Field::getName, Function.identity()));
+
+        boolean needOmitting = Stream.concat(
+                Arrays.stream(methods).map(method -> method.isAnnotationPresent(GraphQLField.class)),
+                Arrays.stream(fields).map(field -> field.isAnnotationPresent(GraphQLField.class))
+        ).anyMatch(Boolean::booleanValue);
+
+        AtomicInteger index = new AtomicInteger();
+
+        return Stream.generate(() -> {
+            Method method = methods[index.getAndIncrement()];
+            Field field = fieldNameMap.get(simplifyName(method.getName()));
+
+            if (needOmitting && !(method.isAnnotationPresent(GraphQLField.class) || (field != null && field.isAnnotationPresent(GraphQLField.class)))) {
+                return null;
+            }
+
+            if (!method.getDeclaringClass().equals(cls)) {
+                return null;
+            }
+
+            if (filter.test(method, field)) {
+                return consumer.apply(method, field);
+            }
+
+            return null;
+        }).limit(methods.length).filter(Objects::nonNull);
     }
 }

@@ -12,9 +12,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -134,6 +133,7 @@ public final class DefinitionResolver {
         checkArgument(hasGraphQLAnnotation(cls, GraphQLType.class));
 
         List<EnumValueDefinition> definitions = Arrays.stream(cls.getFields())
+                .filter(field -> isNotIgnore(null, field))
                 .map(field -> EnumValueDefinition.newEnumValueDefinition()
                         .description(resolveDescription(null, field))
                         .directives(resolveDirective(null, field))
@@ -256,17 +256,11 @@ public final class DefinitionResolver {
      * @return 字段描述
      */
     private List<FieldDefinition> resolveFields(Class<?> cls, Predicate<Class<?>> filter) {
-        // field 不支持 ignore
         return resolveClassExtensions(TypeToken.of(cls), filter)
-                .flatMap(ele -> {
-                    Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
-                            .collect(Collectors.toMap(Field::getName, Function.identity()));
-
-                    return Arrays.stream(ele.getMethods())
-                            .filter(method -> !SETTER_PREFIX.matcher(method.getName()).matches())    //忽略 setter
-                            .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法
-                            .map(method -> resolveField(cls, method, fieldNameMap.get(simplifyName(method.getName()))));
-                })
+                .flatMap(ele -> resolveFieldStream(ele,
+                        andBiPredicate((method, field) -> !SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
+                        (method, field) -> resolveField(cls, method, field))
+                )
                 .collect(Collectors.toList());
     }
 
@@ -330,7 +324,7 @@ public final class DefinitionResolver {
     private List<InputValueDefinition> resolveDirectiveArguments(Class<?> cls) {
         return Arrays.stream(cls.getMethods())
                 .filter(method -> method.getDeclaringClass().equals(cls))
-                .filter(method -> !method.isAnnotationPresent(GraphQLIgnore.class))
+                .filter(method -> isNotIgnore(method, null))
                 .map(method -> InputValueDefinition.newInputValueDefinition()
                         .comments(resolveComment(method, null))
                         .defaultValue(resolveInputDefaultValue(method.getAnnotation(GraphQLDefaultValue.class), TypeToken.of(method.getGenericReturnType())))
@@ -383,16 +377,12 @@ public final class DefinitionResolver {
      */
     private Stream<InputValueDefinition> resolveArgumentGroup(Parameter parameter, Class<?>[] views) {
         return resolveClassExtensions(TypeToken.of(parameter.getParameterizedType()), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
-                .flatMap(ele -> {
-                    Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
-                            .collect(Collectors.toMap(Field::getName, Function.identity()));
-
-                    return Arrays.stream(ele.getMethods())
-                            .filter(method -> method.getParameterCount() > 0)
-                            .filter(method -> SETTER_PREFIX.matcher(method.getName()).matches())    //仅使用 setter
-                            .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法
-                            .flatMap(method -> resolveFieldAsArgument(method, fieldNameMap.get(simplifyName(method.getName())), views));
-                });
+                .flatMap(ele ->
+                        resolveFieldStream(ele,
+                                andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> ResolveUtil.isNotIgnore(method, field, views)),
+                                (method, field) -> resolveFieldAsArgument(method, field, views)
+                        )
+                );
     }
 
     /**
@@ -403,11 +393,8 @@ public final class DefinitionResolver {
      * @param views  当前 GraphQLView 信息
      * @return GraphQL Input Value 定义
      */
-    private Stream<InputValueDefinition> resolveFieldAsArgument(Method method, Field field, Class<?>[] views) {
+    private InputValueDefinition resolveFieldAsArgument(Method method, Field field, Class<?>[] views) {
         Parameter parameter = method.getParameters()[0];
-        GraphQLIgnore ignore = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLIgnore.class))
-                .orElse(method.getAnnotation(GraphQLIgnore.class));
         GraphQLNotNull notNull = Optional.ofNullable(field)
                 .map(ele -> ele.getAnnotation(GraphQLNotNull.class))
                 .orElse(parameter.getAnnotation(GraphQLNotNull.class));
@@ -415,31 +402,25 @@ public final class DefinitionResolver {
                 .map(ele -> ele.getAnnotation(GraphQLMutationType.class))
                 .orElse(parameter.getAnnotation(GraphQLMutationType.class));
 
-        if (!isIgnore(ignore, views)) {
-            TypeToken<?> paramType = TypeToken.of(parameter.getParameterizedType());
+        TypeToken<?> paramType = TypeToken.of(parameter.getParameterizedType());
 
-            if (field != null && paramType.isSupertypeOf(field.getGenericType())) {
-                paramType = TypeToken.of(field.getGenericType());
-            }
-
-            if (mutationType != null) {
-                paramType = TypeToken.of(mutationType.value());
-            }
-
-            InputValueDefinition inputType = InputValueDefinition.newInputValueDefinition()
-                    .comments(resolveComment(method, field))
-                    .defaultValue(resolveFieldInputDefaultValue(method, field))
-                    .description(resolveDescription(method, field))
-                    .directives(resolveDirective(method, field))
-                    .name(resolveFieldName(method.getDeclaringClass(), method, field))
-                    .sourceLocation(resolveSourceLocation(method, field))
-                    .type(resolveInputTypeDefinition(paramType, isNotNull(notNull, views)))
-                    .build();
-
-            return Stream.of(inputType);
+        if (field != null && paramType.isSupertypeOf(field.getGenericType())) {
+            paramType = TypeToken.of(field.getGenericType());
         }
 
-        return Stream.of();
+        if (mutationType != null) {
+            paramType = TypeToken.of(mutationType.value());
+        }
+
+        return InputValueDefinition.newInputValueDefinition()
+                .comments(resolveComment(method, field))
+                .defaultValue(resolveFieldInputDefaultValue(method, field))
+                .description(resolveDescription(method, field))
+                .directives(resolveDirective(method, field))
+                .name(resolveFieldName(method.getDeclaringClass(), method, field))
+                .sourceLocation(resolveSourceLocation(method, field))
+                .type(resolveInputTypeDefinition(paramType, isNotNull(notNull, views)))
+                .build();
     }
 
     private Value resolveInputDefaultValue(GraphQLDefaultValue defaultValue, TypeToken<?> typeToken) {
@@ -499,17 +480,10 @@ public final class DefinitionResolver {
      */
     private List<InputValueDefinition> resolveInputFields(Class<?> cls) {
         return resolveClassExtensions(TypeToken.of(cls), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class) || ele.isAnnotationPresent(GraphQLInterface.class) || ele.isAnnotationPresent(GraphQLTypeExtension.class))
-                .flatMap(ele -> {
-                    Map<String, Field> fieldNameMap = Arrays.stream(ele.getDeclaredFields())
-                            .collect(Collectors.toMap(Field::getName, Function.identity()));
-
-                    // field 不支持 ignore
-
-                    return Arrays.stream(ele.getMethods())
-                            .filter(method -> SETTER_PREFIX.matcher(method.getName()).matches())    //仅使用 setter
-                            .filter(method -> method.getDeclaringClass().equals(ele))   //仅识别类型自身方法;
-                            .map(method -> resolveInputField(method, fieldNameMap.get(simplifyName(method.getName()))));
-                })
+                .flatMap(ele -> resolveFieldStream(ele,
+                        andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
+                        this::resolveInputField
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -575,20 +549,19 @@ public final class DefinitionResolver {
     }
 
     /**
-     * 解析 Object 所有的扩展类型
+     * 将多个 BiPredicate 按 and 合并
      *
-     * @param typeToken Object 类型信息
-     * @return 所有扩展类型信息
+     * @param predicates 断言
+     * @return 合并后的断言
      */
-    private Stream<Class<?>> resolveClassExtensions(TypeToken<?> typeToken, Predicate<Class<?>> filter) {
-        Stream<? extends Class<?>> withParents = typeToken.getTypes().stream()
-                .map(TypeToken::getRawType)
-                .filter(filter);
+    @SafeVarargs
+    private static <T, U> BiPredicate<T, U> andBiPredicate(BiPredicate<T, U>... predicates) {
+        BiPredicate<T, U> predicate = predicates[0];
 
-        Class<?>[] fieldExtensions = Optional.ofNullable(typeToken.getRawType().getAnnotation(GraphQLFieldExtension.class))
-                .map(GraphQLFieldExtension::value)
-                .orElse(new Class[0]);
+        for (int i = 1; i < predicates.length; i++) {
+            predicate = predicate.and(predicates[i]);
+        }
 
-        return Stream.concat(withParents, Arrays.stream(fieldExtensions));
+        return predicate;
     }
 }
