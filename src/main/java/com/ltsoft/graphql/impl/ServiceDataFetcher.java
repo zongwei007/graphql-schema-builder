@@ -11,18 +11,20 @@ import static com.ltsoft.graphql.resolver.ResolveUtil.resolveFieldName;
 
 public class ServiceDataFetcher implements DataFetcher {
 
+    private final String fieldName;
     private final Object instance;
     private final Method method;
     private final List<ArgumentProvider<?>> providers;
 
     public ServiceDataFetcher(Object instance, Method method, List<ArgumentProvider<?>> providers) {
+        this.fieldName = resolveFieldName(instance.getClass(), method, null);
         this.instance = instance;
         this.method = method;
         this.providers = providers;
     }
 
     public String getFieldName() {
-        return resolveFieldName(method.getDeclaringClass(), method, null);
+        return fieldName;
     }
 
     @Override
