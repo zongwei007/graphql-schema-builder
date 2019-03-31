@@ -1,9 +1,12 @@
 package com.ltsoft.graphql.example;
 
+import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.annotations.GraphQLArgument;
 import com.ltsoft.graphql.annotations.GraphQLFieldName;
 import com.ltsoft.graphql.annotations.GraphQLType;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -23,8 +26,12 @@ public abstract class GenericService<E, F extends E> {
     public static class NameFormatter implements BiFunction<String, Class<?>, String> {
 
         @Override
+        @SuppressWarnings("UnstableApiUsage")
         public String apply(String name, Class<?> javaType) {
-            return name.equals("genericList") ? "genericInputList" : null;
+            Type param = ((ParameterizedType) javaType.getGenericSuperclass()).getActualTypeArguments()[0];
+            TypeToken<?> paramType = TypeToken.of(javaType).resolveType(param);
+
+            return name.equals("genericList") ? "generic" + paramType.getRawType().getSimpleName() + "List" : null;
         }
     }
 }

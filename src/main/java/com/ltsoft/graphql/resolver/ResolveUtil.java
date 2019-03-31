@@ -110,11 +110,12 @@ public final class ResolveUtil {
     /**
      * 解析 GraphQL 字段名称
      *
-     * @param method 需要解析的方法
-     * @param field  方法匹配的字段
+     * @param resolvingCls 当前解析类
+     * @param method       需要解析的方法
+     * @param field        方法匹配的字段
      * @return 字段名称
      */
-    public static String resolveFieldName(Method method, Field field) {
+    public static String resolveFieldName(Class<?> resolvingCls, Method method, Field field) {
         checkArgument(method != null || field != null);
 
         GraphQLName name = Optional.ofNullable(field)
@@ -136,8 +137,7 @@ public final class ResolveUtil {
         }
 
         if (method != null) {
-            Class<?> declaringCls = method.getDeclaringClass();
-            return formatName(declaringCls.getAnnotation(GraphQLFieldName.class), fieldName, declaringCls);
+            return formatName(method.getDeclaringClass().getAnnotation(GraphQLFieldName.class), fieldName, resolvingCls);
         } else {
             return fieldName;
         }
@@ -448,7 +448,7 @@ public final class ResolveUtil {
         HashBiMap<String, Object> result = HashBiMap.create(constants.length);
 
         for (int i = 0, len = constants.length; i < len; i++) {
-            result.put(resolveFieldName(null, fields[i]), constants[i]);
+            result.put(resolveFieldName(type, null, fields[i]), constants[i]);
         }
 
         return result;

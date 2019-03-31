@@ -138,7 +138,7 @@ public final class DefinitionResolver {
                 .map(field -> EnumValueDefinition.newEnumValueDefinition()
                         .description(resolveDescription(null, field))
                         .directives(resolveDirective(null, field))
-                        .name(resolveFieldName(null, field))
+                        .name(resolveFieldName(cls, null, field))
                         .build())
                 .collect(Collectors.toList());
 
@@ -279,7 +279,7 @@ public final class DefinitionResolver {
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
                 .inputValueDefinitions(resolveFieldInputs(resolvingCls, method))
-                .name(resolveFieldName(method, field))
+                .name(resolveFieldName(resolvingCls, method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
                 .type(resolveFieldType(resolvingCls, method, field))
                 .build();
@@ -378,7 +378,7 @@ public final class DefinitionResolver {
                     .flatMap(ele ->
                             resolveFieldStream(ele,
                                     andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> isNotIgnore(method, field, views)),
-                                    (method, field) -> resolveFieldAsArgument(method, field, views)
+                                    (method, field) -> resolveFieldAsArgument(resolvingCls, method, field, views)
                             )
                     );
         }
@@ -387,12 +387,13 @@ public final class DefinitionResolver {
     /**
      * 将近似于 GraphQL Object 的 Java 对象的方法解析为输入参数
      *
-     * @param method 关联的方法
-     * @param field  同名的字段
-     * @param views  当前 GraphQLView 信息
+     * @param resolvingCls 当前解析的类型
+     * @param method       关联的方法
+     * @param field        同名的字段
+     * @param views        当前 GraphQLView 信息
      * @return GraphQL Input Value 定义
      */
-    private InputValueDefinition resolveFieldAsArgument(Method method, Field field, Class<?>[] views) {
+    private InputValueDefinition resolveFieldAsArgument(Class<?> resolvingCls, Method method, Field field, Class<?>[] views) {
         Parameter parameter = method.getParameters()[0];
         GraphQLNotNull notNull = Optional.ofNullable(field)
                 .map(ele -> ele.getAnnotation(GraphQLNotNull.class))
@@ -418,7 +419,7 @@ public final class DefinitionResolver {
                 .defaultValue(resolveFieldInputDefaultValue(method, field))
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
-                .name(resolveFieldName(method, field))
+                .name(resolveFieldName(resolvingCls, method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
                 .type(requireNonNull(inputType, String.format("Can not resolve type '%s' as input type", paramType)))
                 .build();
@@ -483,7 +484,7 @@ public final class DefinitionResolver {
         return resolveClassExtensions(TypeToken.of(cls), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class) || ele.isAnnotationPresent(GraphQLInterface.class) || ele.isAnnotationPresent(GraphQLTypeExtension.class))
                 .flatMap(ele -> resolveFieldStream(ele,
                         andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
-                        this::resolveInputField
+                        (method, field) -> resolveInputField(cls, method, field)
                 ))
                 .collect(Collectors.toList());
     }
@@ -491,11 +492,12 @@ public final class DefinitionResolver {
     /**
      * 解析 GraphQL 输入参数
      *
+     * @param cls    当前解析类
      * @param method 关联的方法
      * @param field  同名字段
      * @return Input Value 定义
      */
-    private InputValueDefinition resolveInputField(Method method, Field field) {
+    private InputValueDefinition resolveInputField(Class<?> cls, Method method, Field field) {
         checkArgument(method.getParameterCount() == 1);
 
         GraphQLNotNull notNull = Optional.ofNullable(field)
@@ -524,7 +526,7 @@ public final class DefinitionResolver {
                 .defaultValue(resolveFieldInputDefaultValue(method, field))
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
-                .name(resolveFieldName(method, field))
+                .name(resolveFieldName(cls, method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
                 .type(requireNonNull(inputType, String.format("Can not resolve type '%s' as input type", paramType)))
                 .build();

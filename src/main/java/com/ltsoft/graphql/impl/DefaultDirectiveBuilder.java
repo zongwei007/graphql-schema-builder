@@ -33,7 +33,7 @@ public class DefaultDirectiveBuilder extends BasicDirectiveBuilder<Annotation> {
                     Object value = proxy.invoke(annotation, method, new Object[0]);
                     Object[] param = value.getClass().isArray() ? (Object[]) value : new Object[]{value};
 
-                    addArgument(resolveFieldName(method, null), param);
+                    addArgument(resolveFieldName(owner, method, null), param);
                 }
             }
         } catch (Throwable e) {
