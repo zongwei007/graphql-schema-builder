@@ -364,25 +364,15 @@ public final class DefinitionResolver {
 
             return Stream.of(argument);
         } else {
-            return resolveArgumentGroup(parameter, views);
+            //将输入参数无法识别为 GraphQL Input 的 Java 对象的 Field 参数进行拆解，转换为一组 Input Value
+            return resolveClassExtensions(typeToken, ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
+                    .flatMap(ele ->
+                            resolveFieldStream(ele,
+                                    andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> ResolveUtil.isNotIgnore(method, field, views)),
+                                    (method, field) -> resolveFieldAsArgument(method, field, views)
+                            )
+                    );
         }
-    }
-
-    /**
-     * 将输入参数无法识别为 GraphQL Input 的 Java 对象的 Field 参数进行拆解，转换为一组 Input Value
-     *
-     * @param parameter 关联的参数
-     * @param views     当前 GraphQLView 信息
-     * @return GraphQL Input Value 定义
-     */
-    private Stream<InputValueDefinition> resolveArgumentGroup(Parameter parameter, Class<?>[] views) {
-        return resolveClassExtensions(TypeToken.of(parameter.getParameterizedType()), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
-                .flatMap(ele ->
-                        resolveFieldStream(ele,
-                                andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> ResolveUtil.isNotIgnore(method, field, views)),
-                                (method, field) -> resolveFieldAsArgument(method, field, views)
-                        )
-                );
     }
 
     /**
