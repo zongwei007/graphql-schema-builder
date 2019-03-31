@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 public final class GraphQLSchemaBuilder {
 
@@ -72,17 +72,17 @@ public final class GraphQLSchemaBuilder {
     }
 
     public GraphQLSchemaBuilder document(UnaryOperator<Document.Builder> builderUnaryOperator) {
-        this.documentProcessor = checkNotNull(builderUnaryOperator);
+        this.documentProcessor = requireNonNull(builderUnaryOperator);
         return this;
     }
 
     public GraphQLSchemaBuilder runtimeWiring(UnaryOperator<RuntimeWiring.Builder> builderUnaryOperator) {
-        this.runtimeWiringProcessor = checkNotNull(builderUnaryOperator);
+        this.runtimeWiringProcessor = requireNonNull(builderUnaryOperator);
         return this;
     }
 
     public GraphQLSchemaBuilder instanceFactory(InstanceFactory instanceFactory) {
-        this.instanceFactory = checkNotNull(instanceFactory);
+        this.instanceFactory = requireNonNull(instanceFactory);
         return this;
     }
 

@@ -64,12 +64,14 @@ public final class ResolveUtil {
 
         Type result = typeMapper.apply(javaType);
 
-        if (isArray) {
-            result = new ListType(result);
-        }
+        if (result != null) {
+            if (isArray) {
+                result = new ListType(result);
+            }
 
-        if (isNotNull) {
-            result = new NonNullType(result);
+            if (isNotNull) {
+                result = new NonNullType(result);
+            }
         }
 
         return (T) result;

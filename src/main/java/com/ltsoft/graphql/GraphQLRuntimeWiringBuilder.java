@@ -17,9 +17,9 @@ import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.ltsoft.graphql.resolver.ResolveUtil.hasGraphQLAnnotation;
 import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
+import static java.util.Objects.requireNonNull;
 
 public final class GraphQLRuntimeWiringBuilder {
 
@@ -43,7 +43,7 @@ public final class GraphQLRuntimeWiringBuilder {
     }
 
     public GraphQLRuntimeWiringBuilder setArgumentFactories(List<ArgumentProviderFactory<?>> factories) {
-        this.argumentFactories = checkNotNull(factories);
+        this.argumentFactories = requireNonNull(factories);
         return this;
     }
 
@@ -53,7 +53,7 @@ public final class GraphQLRuntimeWiringBuilder {
     }
 
     public RuntimeWiring.Builder builder() {
-        checkNotNull(instanceFactory);
+        requireNonNull(instanceFactory);
 
         RuntimeWiring.Builder builder = RuntimeWiring.newRuntimeWiring();
 
