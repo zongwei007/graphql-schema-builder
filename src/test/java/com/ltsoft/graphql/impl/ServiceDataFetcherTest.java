@@ -2,6 +2,7 @@ package com.ltsoft.graphql.impl;
 
 import com.ltsoft.graphql.ArgumentProvider;
 import com.ltsoft.graphql.example.MutationInputObject;
+import com.ltsoft.graphql.example.MutationObject;
 import com.ltsoft.graphql.example.MutationService;
 import graphql.schema.DataFetchingEnvironment;
 import org.junit.Test;
@@ -33,7 +34,7 @@ public class ServiceDataFetcherTest {
         Method method = MutationService.class.getMethod("batch", List.class);
         DataFetchingEnvironment env = mock(DataFetchingEnvironment.class);
 
-        List<MutationInputObject> param = Collections.emptyList();
+        List<MutationObject> param = Collections.emptyList();
         List<ArgumentProvider<?>> argumentProviders = Collections.singletonList(environment -> param);
 
         when(service.batch(eq(param))).thenReturn(1);

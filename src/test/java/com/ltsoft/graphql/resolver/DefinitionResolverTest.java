@@ -39,6 +39,18 @@ public class DefinitionResolverTest {
     }
 
     @Test
+    public void testArgumentService() {
+        DefinitionResolver definitionResolver = new DefinitionResolver();
+
+        ObjectTypeDefinition argumentObject = definitionResolver.object(ArgumentService.class);
+        ObjectTypeDefinition mutationObject = definitionResolver.object(MutationObject.class);
+        InputObjectTypeDefinition inputObject = definitionResolver.input(MutationInputObject.class);
+
+        assertThat(printDefinition(definitionResolver, argumentObject, mutationObject, inputObject))
+                .isEqualToIgnoringWhitespace(readSchemaExample("/example/ArgumentService.graphql"));
+    }
+
+    @Test
     public void testGraphQLView() {
         DefinitionResolver definitionResolver = new DefinitionResolver();
 

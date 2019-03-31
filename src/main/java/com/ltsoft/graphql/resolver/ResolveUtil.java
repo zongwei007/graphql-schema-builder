@@ -47,7 +47,7 @@ public final class ResolveUtil {
      */
     @SuppressWarnings({"UnstableApiUsage", "unchecked"})
     static <T extends Type> T wrapGraphQLType(TypeToken<?> typeToken, Function<Class<?>, ? extends Type> typeMapper, Boolean isNotNull) {
-        boolean isArray = typeToken.isArray() || typeToken.isSubtypeOf(Collection.class);
+        boolean isArray = isGraphQLList(typeToken);
         Class<?> javaType = typeToken.getRawType();
 
         if (isArray) {
@@ -114,7 +114,7 @@ public final class ResolveUtil {
      * @param field  方法匹配的字段
      * @return 字段名称
      */
-    public static String resolveFieldName(Class<?> resolvingCls, Method method, Field field) {
+    public static String resolveFieldName(Method method, Field field) {
         checkArgument(method != null || field != null);
 
         GraphQLName name = Optional.ofNullable(field)
@@ -135,7 +135,12 @@ public final class ResolveUtil {
             fieldName = field.getName();
         }
 
-        return formatName(resolvingCls.getAnnotation(GraphQLFieldName.class), fieldName, resolvingCls);
+        if (method != null) {
+            Class<?> declaringCls = method.getDeclaringClass();
+            return formatName(declaringCls.getAnnotation(GraphQLFieldName.class), fieldName, declaringCls);
+        } else {
+            return fieldName;
+        }
     }
 
     /**
@@ -412,26 +417,6 @@ public final class ResolveUtil {
                 || cls.isAnnotationPresent(GraphQLDirectiveLocations.class);
     }
 
-    static Type replaceTypeName(Type inputType, TypeName replace) {
-        if (inputType instanceof NonNullType) {
-            NonNullType nonNullType = (NonNullType) inputType;
-
-            return nonNullType.transform(ele -> ele.type(replaceTypeName(nonNullType.getType(), replace)));
-        }
-
-        if (inputType instanceof ListType) {
-            ListType listType = (ListType) inputType;
-
-            return listType.transform(ele -> ele.type(replaceTypeName(listType.getType(), replace)));
-        }
-
-        if (inputType instanceof TypeName) {
-            return replace;
-        }
-
-        return inputType;
-    }
-
     /**
      * 解析泛型类型
      *
@@ -463,7 +448,7 @@ public final class ResolveUtil {
         HashBiMap<String, Object> result = HashBiMap.create(constants.length);
 
         for (int i = 0, len = constants.length; i < len; i++) {
-            result.put(resolveFieldName(type, null, fields[i]), constants[i]);
+            result.put(resolveFieldName(null, fields[i]), constants[i]);
         }
 
         return result;
@@ -599,5 +584,10 @@ public final class ResolveUtil {
 
             return null;
         }).limit(methods.length).filter(Objects::nonNull);
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    public static boolean isGraphQLList(TypeToken<?> typeToken) {
+        return typeToken.isArray() || typeToken.isSubtypeOf(Collection.class);
     }
 }

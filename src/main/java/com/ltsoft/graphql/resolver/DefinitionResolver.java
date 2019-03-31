@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class DefinitionResolver {
@@ -137,7 +138,7 @@ public final class DefinitionResolver {
                 .map(field -> EnumValueDefinition.newEnumValueDefinition()
                         .description(resolveDescription(null, field))
                         .directives(resolveDirective(null, field))
-                        .name(resolveFieldName(cls, null, field))
+                        .name(resolveFieldName(null, field))
                         .build())
                 .collect(Collectors.toList());
 
@@ -278,7 +279,7 @@ public final class DefinitionResolver {
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
                 .inputValueDefinitions(resolveFieldInputs(resolvingCls, method))
-                .name(resolveFieldName(resolvingCls, method, field))
+                .name(resolveFieldName(method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
                 .type(resolveFieldType(resolvingCls, method, field))
                 .build();
@@ -345,15 +346,23 @@ public final class DefinitionResolver {
      * @return GraphQL Argument
      */
     private Stream<InputValueDefinition> resolveFieldArgument(Class<?> resolvingCls, Parameter parameter, Class<?>[] views) {
+        boolean isNotNull = isNotNull(parameter.getAnnotation(GraphQLNotNull.class), views);
         TypeToken<?> typeToken = resolveGenericType(resolvingCls, parameter.getParameterizedType());
+        Type inputType = resolveInputTypeDefinition(typeToken, isNotNull);
 
-        Type inputType = resolveInputTypeDefinition(typeToken, isNotNull(parameter.getAnnotation(GraphQLNotNull.class), views));
+        if (inputType == null && parameter.isAnnotationPresent(GraphQLMutationType.class)) {
+            inputType = resolveType(parameter.getAnnotation(GraphQLMutationType.class).value());
 
-        if (inputType != null) {
-            if (parameter.isAnnotationPresent(GraphQLMutationType.class)) {
-                inputType = replaceTypeName(inputType, resolveType(parameter.getAnnotation(GraphQLMutationType.class).value()));
+            if (isGraphQLList(typeToken)) {
+                inputType = new ListType(inputType);
             }
 
+            if (isNotNull) {
+                inputType = new NonNullType(inputType);
+            }
+        }
+
+        if (inputType != null) {
             InputValueDefinition argument = InputValueDefinition.newInputValueDefinition()
                     .description(resolveDescription(parameter))
                     .defaultValue(resolveArgumentDefaultValue(parameter, typeToken))
@@ -368,7 +377,7 @@ public final class DefinitionResolver {
             return resolveClassExtensions(typeToken, ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
                     .flatMap(ele ->
                             resolveFieldStream(ele,
-                                    andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> ResolveUtil.isNotIgnore(method, field, views)),
+                                    andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> isNotIgnore(method, field, views)),
                                     (method, field) -> resolveFieldAsArgument(method, field, views)
                             )
                     );
@@ -402,14 +411,16 @@ public final class DefinitionResolver {
             paramType = TypeToken.of(mutationType.value());
         }
 
+        Type inputType = resolveInputTypeDefinition(paramType, isNotNull(notNull, views));
+
         return InputValueDefinition.newInputValueDefinition()
                 .comments(resolveComment(method, field))
                 .defaultValue(resolveFieldInputDefaultValue(method, field))
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
-                .name(resolveFieldName(method.getDeclaringClass(), method, field))
+                .name(resolveFieldName(method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
-                .type(resolveInputTypeDefinition(paramType, isNotNull(notNull, views)))
+                .type(requireNonNull(inputType, String.format("Can not resolve type '%s' as input type", paramType)))
                 .build();
     }
 
@@ -513,9 +524,9 @@ public final class DefinitionResolver {
                 .defaultValue(resolveFieldInputDefaultValue(method, field))
                 .description(resolveDescription(method, field))
                 .directives(resolveDirective(method, field))
-                .name(resolveFieldName(method.getDeclaringClass(), method, field))
+                .name(resolveFieldName(method, field))
                 .sourceLocation(resolveSourceLocation(method, field))
-                .type(inputType)
+                .type(requireNonNull(inputType, String.format("Can not resolve type '%s' as input type", paramType)))
                 .build();
     }
 

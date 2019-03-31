@@ -23,7 +23,7 @@ public class MutationService {
 
     @GraphQLField
     @GraphQLDataFetcher
-    public Integer batch(@GraphQLArgument("items") @GraphQLNotNull List<MutationInputObject> items) {
+    public Integer batch(@GraphQLArgument("items") @GraphQLMutationType(MutationInputObject.class) @GraphQLNotNull List<MutationObject> items) {
         return 0;
     }
 

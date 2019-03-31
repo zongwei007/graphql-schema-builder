@@ -2,11 +2,13 @@ package com.ltsoft.graphql.example;
 
 import com.ltsoft.graphql.annotations.GraphQLArgument;
 import com.ltsoft.graphql.annotations.GraphQLMutationType;
+import com.ltsoft.graphql.annotations.GraphQLType;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@GraphQLType
 public class ArgumentService {
 
     public String hello(@GraphQLArgument("name") String name) {

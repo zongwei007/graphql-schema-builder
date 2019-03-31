@@ -15,8 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.ltsoft.graphql.resolver.ResolveUtil.resolveArgumentName;
-import static com.ltsoft.graphql.resolver.ResolveUtil.resolveGenericType;
+import static com.ltsoft.graphql.resolver.ResolveUtil.*;
 
 @SuppressWarnings("UnstableApiUsage")
 public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
@@ -32,7 +31,7 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
         this.argumentName = resolveArgumentName(parameter);
 
         Class<?> rawType = typeToken.getRawType();
-        if (parameter.isAnnotationPresent(GraphQLMutationType.class)) {
+        if (!isGraphQLList(typeToken) && parameter.isAnnotationPresent(GraphQLMutationType.class)) {
             rawType = parameter.getAnnotation(GraphQLMutationType.class).value();
         }
 

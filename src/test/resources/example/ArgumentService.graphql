@@ -1,0 +1,29 @@
+type ArgumentService {
+  basic(input: MutationInputObject): MutationObject
+  basicList(list: [MutationInputObject]): [MutationObject]
+  hello(name: String): String
+  helloAsObj(id: Long!, name: String, parent: MutationInputObject): MutationObject
+  map(input: Object): Object
+  mapList(list: [Object]): [Object]
+  simpleList(list: [String]): [String]
+}
+
+type MutationObject {
+  id: Long!
+  name: String!
+  parent: MutationObject
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}
+
+input MutationInputObject {
+  id: Long!
+  name: String
+  parent: MutationInputObject
+}
