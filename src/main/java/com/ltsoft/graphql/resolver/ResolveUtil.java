@@ -47,10 +47,10 @@ public final class ResolveUtil {
      */
     @SuppressWarnings({"UnstableApiUsage", "unchecked"})
     static <T extends Type> T wrapGraphQLType(TypeToken<?> typeToken, Function<Class<?>, ? extends Type> typeMapper, Boolean isNotNull) {
-        boolean isList = typeToken.isArray() || typeToken.isSubtypeOf(Iterable.class);
+        boolean isArray = typeToken.isArray() || typeToken.isSubtypeOf(Collection.class);
         Class<?> javaType = typeToken.getRawType();
 
-        if (isList) {
+        if (isArray) {
             if (typeToken.getComponentType() != null) {
                 javaType = typeToken.getComponentType().getRawType();
             } else {
@@ -64,7 +64,7 @@ public final class ResolveUtil {
 
         Type result = typeMapper.apply(javaType);
 
-        if (isList) {
+        if (isArray) {
             result = new ListType(result);
         }
 
