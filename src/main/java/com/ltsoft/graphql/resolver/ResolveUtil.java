@@ -136,28 +136,22 @@ public final class ResolveUtil {
             fieldName = field.getName();
         }
 
-        if (method != null) {
-            return formatName(method.getDeclaringClass().getAnnotation(GraphQLFieldName.class), fieldName, resolvingCls);
-        } else {
-            return fieldName;
-        }
+        return Optional.ofNullable(method)
+                .map(ele -> ele.getDeclaringClass().getAnnotation(GraphQLFieldName.class))
+                .map(GraphQLFieldName::value)
+                .map(type -> formatName(type, fieldName, resolvingCls))
+                .orElse(fieldName);
     }
 
     /**
      * 格式化 GraphQL 类型/字段名称
      *
-     * @param annotation 格式化声明
-     * @param name       类型/字段名称
-     * @param javaType   字段所属 Java 类型
+     * @param formatterType 格式模板
+     * @param name          类型/字段名称
+     * @param javaType      字段所属 Java 类型
      * @return 格式化结果
      */
-    private static String formatName(GraphQLFieldName annotation, String name, Class<?> javaType) {
-        if (annotation == null) {
-            return name;
-        }
-
-        Class<? extends BiFunction<String, Class<?>, String>> formatterType = annotation.value();
-
+    private static String formatName(Class<? extends BiFunction<String, Class<?>, String>> formatterType, String name, Class<?> javaType) {
         try {
             BiFunction<String, Class<?>, String> formatter = formatterType.getConstructor().newInstance();
             String result = formatter.apply(name, javaType);
@@ -201,7 +195,7 @@ public final class ResolveUtil {
      * @param field  关联字段
      * @return 字段描述
      */
-    static Description resolveDescription(Method method, Field field) {
+    static Description resolveDescription(Class<?> resolvingCls, Method method, Field field) {
         String description = Optional.ofNullable(field)
                 .map(ele -> ele.getAnnotation(GraphQLDescription.class))
                 .map(GraphQLDescription::value)
@@ -211,6 +205,16 @@ public final class ResolveUtil {
                                 .map(GraphQLDescription::value)
                                 .orElse(null)
                 );
+
+        if (method != null) {
+            String finalDescription = description;
+
+            description = Optional.of(method.getDeclaringClass())
+                    .map(ele -> ele.getAnnotation(GraphQLFieldDescription.class))
+                    .map(GraphQLFieldDescription::value)
+                    .map(type -> formatName(type, finalDescription, resolvingCls))
+                    .orElse(description);
+        }
 
         if (description != null) {
             return new Description(description, resolveSourceLocation(method, field), description.contains("\n"));

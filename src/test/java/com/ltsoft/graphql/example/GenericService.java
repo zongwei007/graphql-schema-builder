@@ -1,9 +1,7 @@
 package com.ltsoft.graphql.example;
 
 import com.google.common.reflect.TypeToken;
-import com.ltsoft.graphql.annotations.GraphQLArgument;
-import com.ltsoft.graphql.annotations.GraphQLFieldName;
-import com.ltsoft.graphql.annotations.GraphQLType;
+import com.ltsoft.graphql.annotations.*;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -13,12 +11,14 @@ import java.util.stream.Collectors;
 
 @GraphQLType
 @GraphQLFieldName(GenericService.NameFormatter.class)
+@GraphQLFieldDescription(GenericService.NameFormatter.class)
 public abstract class GenericService<E, F extends E> {
 
     public E generic(@GraphQLArgument E input) {
         return input;
     }
 
+    @GraphQLDescription("genericList")
     public List<E> genericList(@GraphQLArgument("list") List<F> list) {
         return list.stream().map(ele -> (E) ele).collect(Collectors.toList());
     }
@@ -31,7 +31,7 @@ public abstract class GenericService<E, F extends E> {
             Type param = ((ParameterizedType) javaType.getGenericSuperclass()).getActualTypeArguments()[0];
             TypeToken<?> paramType = TypeToken.of(javaType).resolveType(param);
 
-            return name.equals("genericList") ? "generic" + paramType.getRawType().getSimpleName() + "List" : null;
+            return "genericList".equals(name) ? "generic" + paramType.getRawType().getSimpleName() + "List" : null;
         }
     }
 }
