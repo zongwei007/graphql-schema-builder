@@ -181,7 +181,8 @@ public final class ResolveUtil {
      * @param cls 需要解析的类型
      * @return 类型描述
      */
-    static Description resolveDescription(Class<?> cls) {
+    @SuppressWarnings("WeakerAccess")
+    public static Description resolveDescription(Class<?> cls) {
         return Optional.ofNullable(cls.getAnnotation(GraphQLDescription.class))
                 .map(GraphQLDescription::value)
                 .map(str -> new Description(str, resolveSourceLocation(cls), str.contains("\n")))
@@ -195,7 +196,8 @@ public final class ResolveUtil {
      * @param field  关联字段
      * @return 字段描述
      */
-    static Description resolveDescription(Class<?> resolvingCls, Method method, Field field) {
+    @SuppressWarnings("WeakerAccess")
+    public static Description resolveDescription(Class<?> resolvingCls, Method method, Field field) {
         String description = Optional.ofNullable(field)
                 .map(ele -> ele.getAnnotation(GraphQLDescription.class))
                 .map(GraphQLDescription::value)
