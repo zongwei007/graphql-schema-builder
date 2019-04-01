@@ -1,6 +1,5 @@
 package com.ltsoft.graphql.resolver;
 
-import com.ltsoft.graphql.annotations.GraphQLTypeExtension;
 import graphql.schema.idl.EnumValuesProvider;
 
 import java.util.Map;
@@ -14,7 +13,7 @@ public class EnumFieldValueProvider implements EnumValuesProvider {
     private final Map<String, Object> valueMap;
 
     public EnumFieldValueProvider(Class<?> type) {
-        this.typeName = resolveTypeName(type.isAnnotationPresent(GraphQLTypeExtension.class) ? type.getAnnotation(GraphQLTypeExtension.class).value() : type);
+        this.typeName = resolveTypeName(type);
         this.valueMap = resolveEnumValueMap(type);
     }
 
