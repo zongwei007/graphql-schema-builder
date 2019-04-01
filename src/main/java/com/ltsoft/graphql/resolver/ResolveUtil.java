@@ -557,6 +557,7 @@ public final class ResolveUtil {
      * 解析 Object 所有的扩展类型
      *
      * @param typeToken Object 类型信息
+     * @param filter    类型过滤器
      * @return 所有扩展类型信息
      */
     @SuppressWarnings("UnstableApiUsage")

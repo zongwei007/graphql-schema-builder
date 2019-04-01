@@ -265,7 +265,7 @@ public final class DefinitionResolver {
                         andBiPredicate((method, field) -> !SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
                         (method, field) -> resolveField(cls, method, field))
                 )
-                .collect(Collectors.toList());
+                .collect(new FieldDefinitionCollector<>(FieldDefinition::getName));
     }
 
     /**
@@ -326,7 +326,7 @@ public final class DefinitionResolver {
         return Arrays.stream(method.getParameters())
                 .filter(parameter -> parameter.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLArgument.class))
                 .flatMap(parameter -> resolveFieldArgument(resolvingCls, method, parameter, views))
-                .collect(Collectors.toList());
+                .collect(new FieldDefinitionCollector<>(InputValueDefinition::getName));
     }
 
     private List<InputValueDefinition> resolveDirectiveArguments(Class<?> cls) {
@@ -496,7 +496,7 @@ public final class DefinitionResolver {
                         andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
                         (method, field) -> resolveInputField(cls, method, field)
                 ))
-                .collect(Collectors.toList());
+                .collect(new FieldDefinitionCollector<>(InputValueDefinition::getName));
     }
 
     /**
@@ -580,4 +580,5 @@ public final class DefinitionResolver {
 
         return predicate;
     }
+
 }

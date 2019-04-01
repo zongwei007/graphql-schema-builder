@@ -1,4 +1,5 @@
 type GenericServiceImpl {
+  "return a MutationObject"
   generic(id: Long!, name: String, parent: MutationInputObject): MutationObject
   "genericMutationObjectList"
   genericMutationObjectList(list: [MutationInputObject]): [MutationObject]
