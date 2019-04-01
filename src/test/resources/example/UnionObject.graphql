@@ -16,6 +16,7 @@ type Normal {
   "GraphQL foo field"
   foo: String
   fooList: [String]!
+  type: CustomEnum
 }
 
 type NormalInterfaceImpl implements NormalInterface {
@@ -29,4 +30,9 @@ type Query {
 
 type schema {
   query: Query
+}
+
+enum CustomEnum {
+  customFirst
+  customSecond
 }

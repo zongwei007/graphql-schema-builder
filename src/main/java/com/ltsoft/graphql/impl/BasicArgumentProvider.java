@@ -2,8 +2,8 @@ package com.ltsoft.graphql.impl;
 
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.ArgumentProvider;
-import com.ltsoft.graphql.annotations.GraphQLMutationType;
 import com.ltsoft.graphql.annotations.GraphQLType;
+import com.ltsoft.graphql.annotations.GraphQLTypeReference;
 import graphql.schema.DataFetchingEnvironment;
 
 import java.lang.reflect.InvocationTargetException;
@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
 
-@SuppressWarnings("UnstableApiUsage")
+@SuppressWarnings({"UnstableApiUsage", "WeakerAccess"})
 public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
 
     private final String argumentName;
@@ -31,13 +31,12 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
         this.argumentName = resolveArgumentName(parameter);
 
         Class<?> rawType = typeToken.getRawType();
-        if (!isGraphQLList(typeToken) && parameter.isAnnotationPresent(GraphQLMutationType.class)) {
-            rawType = parameter.getAnnotation(GraphQLMutationType.class).value();
-        }
-
-        //非枚举且直接定义为 GraphQLType 的参数，才能识别为泛参数
-        if (!rawType.isEnum() && rawType.isAnnotationPresent(GraphQLType.class)) {
-            this.isGenericType = true;
+        //非 List 类型，且未声明类型引用
+        if (!isGraphQLList(typeToken) && !parameter.isAnnotationPresent(GraphQLTypeReference.class)) {
+            //非枚举且直接定义为 GraphQLType 的参数，才能识别为泛参数
+            if (!rawType.isEnum() && rawType.isAnnotationPresent(GraphQLType.class)) {
+                this.isGenericType = true;
+            }
         }
     }
 
@@ -64,7 +63,7 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked"})
     protected T toMap(Object value, TypeToken<?> typeToken) {
         checkArgument(value instanceof Map);
 

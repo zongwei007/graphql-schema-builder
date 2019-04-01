@@ -5,6 +5,8 @@ import com.ltsoft.graphql.example.RootMutationService;
 import com.ltsoft.graphql.example.RootQueryService;
 import com.ltsoft.graphql.example.RootSchemaService;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
+import com.ltsoft.graphql.resolver.ResolveTestUtil;
+import graphql.language.EnumTypeDefinition;
 import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLSchema;
 import org.junit.Test;
@@ -32,11 +34,13 @@ public class GraphQLSchemaBuilderTest {
     @Test
     public void testWithPackage() {
         InstanceFactory instanceFactory = new DefaultInstanceFactory();
+        EnumTypeDefinition customEnum = ResolveTestUtil.buildCustomEnumDefinition();
 
         GraphQLSchema schema = new GraphQLSchemaBuilder()
                 .addScalar(HelloObject.HelloObjectScalar, HelloObject.class)
                 .instanceFactory(instanceFactory)
                 .withPackage("com.ltsoft.graphql.example")
+                .document(document -> document.definition(customEnum))
                 .build();
 
         assertThat(schema.getObjectType("Query")).isNotNull();

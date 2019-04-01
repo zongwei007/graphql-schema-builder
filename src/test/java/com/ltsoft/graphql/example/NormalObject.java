@@ -23,6 +23,9 @@ public class NormalObject {
     @GraphQLNotNull
     private List<String> fooList;
 
+    @GraphQLTypeReference(name = "CustomEnum")
+    private Integer type;
+
     @GraphQLNotNull
     @GraphQLDescription("GraphQL count field")
     public Integer getCount(@GraphQLArgument("cnd") @GraphQLDescription("A cnd argument") @GraphQLDefaultValue("1") @GraphQLNotNull String cnd) {
@@ -56,6 +59,14 @@ public class NormalObject {
 
     public void setFooList(List<String> fooList) {
         this.fooList = fooList;
+    }
+
+    public Integer getType() {
+        return type;
+    }
+
+    public void setType(Integer type) {
+        this.type = type;
     }
 
     public static class OffsetDateTimeDefaultValue implements Supplier<OffsetDateTime[]> {

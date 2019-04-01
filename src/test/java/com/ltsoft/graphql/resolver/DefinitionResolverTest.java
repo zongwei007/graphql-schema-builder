@@ -2,18 +2,11 @@ package com.ltsoft.graphql.resolver;
 
 import com.ltsoft.graphql.annotations.GraphQLType;
 import com.ltsoft.graphql.example.*;
-import com.ltsoft.graphql.scalars.ScalarTypeRepository;
 import graphql.language.*;
 import graphql.schema.GraphQLScalarType;
-import graphql.schema.idl.SchemaPrinter;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
-
+import static com.ltsoft.graphql.resolver.ResolveTestUtil.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DefinitionResolverTest {
@@ -33,8 +26,9 @@ public class DefinitionResolverTest {
         DefinitionResolver definitionResolver = new DefinitionResolver();
 
         ObjectTypeDefinition typeDefinition = definitionResolver.object(NormalObject.class);
+        EnumTypeDefinition customEnum = buildCustomEnumDefinition();
 
-        assertThat(printDefinition(definitionResolver, typeDefinition))
+        assertThat(printDefinition(definitionResolver, customEnum, typeDefinition))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/NormalObject.graphql"));
     }
 
@@ -77,6 +71,7 @@ public class DefinitionResolverTest {
     @Test
     public void testObjectExtension() {
         DefinitionResolver definitionResolver = new DefinitionResolver();
+        EnumTypeDefinition customEnum = buildCustomEnumDefinition();
 
         ObjectTypeDefinition objectType = definitionResolver.object(NormalInterfaceImpl.class);
         ObjectTypeExtensionDefinition extObjectType = definitionResolver.extension(NormalInterfaceImplExtension.class);
@@ -95,7 +90,7 @@ public class DefinitionResolverTest {
         ObjectTypeDefinition mutationObject = definitionResolver.object(MutationObject.class);
         UnionTypeExtensionDefinition extUnionType = definitionResolver.extension(UnionObjectWithExtension.class);
 
-        assertThat(printDefinition(definitionResolver, objectType, extObjectType, enumType, extEnumType,
+        assertThat(printDefinition(definitionResolver, customEnum, objectType, extObjectType, enumType, extEnumType,
                 ifaceType, extIfaceType, inputType, extInputType, unionType, normalObject, mutationObject, extUnionType))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/NormalObjectExtension.graphql"));
     }
@@ -137,13 +132,14 @@ public class DefinitionResolverTest {
     @Test
     public void testGraphQLUnion() {
         DefinitionResolver definitionResolver = new DefinitionResolver();
+        EnumTypeDefinition customEnum = buildCustomEnumDefinition();
 
         UnionTypeDefinition unionType = definitionResolver.union(UnionObject.class);
         ObjectTypeDefinition objectType = definitionResolver.object(NormalObject.class);
         ObjectTypeDefinition implType = definitionResolver.object(NormalInterfaceImpl.class);
         InterfaceTypeDefinition interfaceType = definitionResolver.iface(NormalInterface.class);
 
-        assertThat(printDefinition(definitionResolver, unionType, objectType, implType, interfaceType))
+        assertThat(printDefinition(definitionResolver, customEnum, unionType, objectType, implType, interfaceType))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/UnionObject.graphql"));
     }
 
@@ -168,38 +164,4 @@ public class DefinitionResolverTest {
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/NormalDirective.graphql"));
     }
 
-    private String readSchemaExample(String path) {
-        try {
-            return String.join("\n", Files.readAllLines(Paths.get(getClass().getResource(path).toURI())));
-        } catch (IOException | URISyntaxException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private String printDefinition(DefinitionResolver definitionResolver, Definition... definitions) {
-        ScalarTypeRepository typeRepository = definitionResolver.getTypeRepository();
-        SchemaPrinter printer = new SchemaPrinter();
-
-        Definition rootType = ObjectTypeDefinition.newObjectTypeDefinition()
-                .name("schema")
-                .fieldDefinition(FieldDefinition.newFieldDefinition().name("query").type(new TypeName("Query")).build())
-                .build();
-
-        Definition queryType = ObjectTypeDefinition.newObjectTypeDefinition()
-                .name("Query")
-                .fieldDefinition(FieldDefinition.newFieldDefinition().name("hello").type(new TypeName("String")).build())
-                .build();
-
-        Document.Builder documentBuilder = Document.newDocument()
-                .definition(rootType)
-                .definition(queryType);
-
-        Arrays.asList(definitions).forEach(documentBuilder::definition);
-
-        typeRepository.allExtensionTypeDefinitions().forEach(documentBuilder::definition);
-
-        Document schemaIDL = documentBuilder.build();
-
-        return printer.print(schemaIDL);
-    }
 }

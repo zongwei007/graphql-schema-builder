@@ -30,52 +30,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 
 public final class ResolveUtil {
 
     private static final Pattern METHOD_NAME_PREFIX = Pattern.compile("^(is|get|set)([A-Z])");
-
-    /**
-     * 包装 GraphQL 类型。自动对 Java 类型进行拆包，判断是否为 List 类型并重新封装。
-     *
-     * @param typeToken  Java 类型
-     * @param typeMapper GraphQL 基础类型提供者
-     * @param isNotNull  是否要求非空
-     * @param <T>        GraphQL 类型
-     * @return GraphQL Type
-     */
-    @SuppressWarnings({"UnstableApiUsage", "unchecked"})
-    static <T extends Type> T wrapGraphQLType(TypeToken<?> typeToken, Function<Class<?>, ? extends Type> typeMapper, Boolean isNotNull) {
-        boolean isArray = isGraphQLList(typeToken);
-        Class<?> javaType = typeToken.getRawType();
-
-        if (isArray) {
-            if (typeToken.getComponentType() != null) {
-                javaType = typeToken.getComponentType().getRawType();
-            } else {
-                TypeVariable<? extends Class<?>>[] typeParameters = typeToken.getRawType().getTypeParameters();
-
-                checkState(typeParameters.length == 1);
-
-                javaType = typeToken.resolveType(typeParameters[0]).getRawType();
-            }
-        }
-
-        Type result = typeMapper.apply(javaType);
-
-        if (result != null) {
-            if (isArray) {
-                result = new ListType(result);
-            }
-
-            if (isNotNull) {
-                result = new NonNullType(result);
-            }
-        }
-
-        return (T) result;
-    }
 
     /**
      * 解析 GraphQL 类型
@@ -300,6 +258,42 @@ public final class ResolveUtil {
                 .filter(ele -> ele.isAnnotationPresent(GraphQLInterface.class))
                 .map(ResolveUtil::resolveType)
                 .collect(Collectors.toList());
+    }
+
+    static TypeName resolveMutationType(GraphQLMutationType annotation) {
+        return Optional.of(annotation.value())
+                .map(ResolveUtil::resolveTypeName)
+                .map(TypeName::new)
+                .orElse(null);
+    }
+
+    static TypeName resolveTypeReference(GraphQLTypeReference annotation) {
+        String name = Optional.of(annotation.type())
+                .filter(type -> !Object.class.equals(type))
+                .map(ResolveUtil::resolveTypeName)
+                .orElse(annotation.name());
+
+        return Strings.isNullOrEmpty(name) ? null : new TypeName(name);
+    }
+
+    static Type replaceTypeName(Type inputType, TypeName replace) {
+        if (inputType instanceof NonNullType) {
+            NonNullType nonNullType = (NonNullType) inputType;
+
+            return nonNullType.transform(ele -> ele.type(replaceTypeName(nonNullType.getType(), replace)));
+        }
+
+        if (inputType instanceof ListType) {
+            ListType listType = (ListType) inputType;
+
+            return listType.transform(ele -> ele.type(replaceTypeName(listType.getType(), replace)));
+        }
+
+        if (inputType instanceof TypeName) {
+            return replace;
+        }
+
+        return inputType;
     }
 
     /**
@@ -538,6 +532,25 @@ public final class ResolveUtil {
 
     static List<Directive> resolveDirective(Parameter parameter) {
         return resolveDirective(parameter.getAnnotations());
+    }
+
+    /**
+     * 解析字段注解
+     *
+     * @param method 解析方法
+     * @param field  关联字段
+     * @param type   注解类型
+     * @param <T>    注解类型
+     * @return 注解信息
+     */
+    static <T extends Annotation> T resolveFieldAnnotation(Method method, Field field, Class<T> type) {
+        return Optional.ofNullable(field)
+                .map(ele -> ele.getAnnotation(type))
+                .orElseGet(() ->
+                        Optional.ofNullable(method)
+                                .map(ele -> ele.getAnnotation(type))
+                                .orElse(null)
+                );
     }
 
     /**

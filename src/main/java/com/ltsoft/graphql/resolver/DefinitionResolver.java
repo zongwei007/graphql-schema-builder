@@ -10,16 +10,19 @@ import graphql.schema.idl.TypeInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
 import static java.util.Objects.requireNonNull;
 
@@ -293,15 +296,19 @@ public final class DefinitionResolver {
      * @param field        字段同名的属性
      * @return GraphQL Field 类型
      */
-    private Type<Type> resolveFieldType(Class<?> resolvingCls, Method method, Field field) {
-        boolean isNotNull = Optional.ofNullable(field)
-                .map(ele -> ele.isAnnotationPresent(GraphQLNotNull.class))
-                .orElse(method.isAnnotationPresent(GraphQLNotNull.class));
+    private Type resolveFieldType(Class<?> resolvingCls, Method method, Field field) {
+        boolean isNotNull = resolveFieldAnnotation(method, field, GraphQLNotNull.class) != null;
+        GraphQLTypeReference typeReference = resolveFieldAnnotation(method, field, GraphQLTypeReference.class);
 
-        return wrapGraphQLType(resolveGenericType(resolvingCls, method.getGenericReturnType()), cls -> typeRepository.findMappingScalarType(cls)
-                .map(ele -> new TypeName(ele.getName()))
-                //若无法识别为 ScalarType，则使用类型引用作为 OutputType
-                .orElse(resolveType(cls)), isNotNull);
+        //若无法识别为 ScalarType，则使用类型引用作为 OutputType
+        Type fieldType = resolveGraphQLType(resolveGenericType(resolvingCls, method.getGenericReturnType()), ResolveUtil::resolveType, isNotNull);
+
+        //若声明了 TypeReference，则使用 TypeReference 类型进行替换
+        if (typeReference != null) {
+            fieldType = replaceTypeName(fieldType, resolveTypeReference(typeReference));
+        }
+
+        return fieldType;
     }
 
     /**
@@ -318,7 +325,7 @@ public final class DefinitionResolver {
 
         return Arrays.stream(method.getParameters())
                 .filter(parameter -> parameter.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLArgument.class))
-                .flatMap(parameter -> resolveFieldArgument(resolvingCls, parameter, views))
+                .flatMap(parameter -> resolveFieldArgument(resolvingCls, method, parameter, views))
                 .collect(Collectors.toList());
     }
 
@@ -328,7 +335,7 @@ public final class DefinitionResolver {
                 .filter(method -> isNotIgnore(method, null))
                 .map(method -> InputValueDefinition.newInputValueDefinition()
                         .comments(resolveComment(method, null))
-                        .defaultValue(resolveInputDefaultValue(method.getAnnotation(GraphQLDefaultValue.class), TypeToken.of(method.getGenericReturnType())))
+                        .defaultValue(resolveInputDefaultValue(method.getAnnotation(GraphQLDefaultValue.class), TypeToken.of(method.getGenericReturnType()), null))
                         .name(method.getName())
                         .sourceLocation(resolveSourceLocation(method, null))
                         .type(resolveFieldType(cls, method, null))
@@ -340,48 +347,40 @@ public final class DefinitionResolver {
     /**
      * 解析 GraphQL Argument
      *
-     * @param resolvingCls 当前解析的类型
-     * @param parameter    关联的参数
-     * @param views        当前 GraphQLView 信息
+     * @param resolvingCls    当前解析的类型
+     * @param resolvingMethod 当前解析的参数
+     * @param parameter       关联的参数
+     * @param views           当前 GraphQLView 信息
      * @return GraphQL Argument
      */
-    private Stream<InputValueDefinition> resolveFieldArgument(Class<?> resolvingCls, Parameter parameter, Class<?>[] views) {
+    private Stream<InputValueDefinition> resolveFieldArgument(Class<?> resolvingCls, Method resolvingMethod, Parameter parameter, Class<?>[] views) {
         boolean isNotNull = isNotNull(parameter.getAnnotation(GraphQLNotNull.class), views);
+        GraphQLTypeReference typeReference = parameter.getAnnotation(GraphQLTypeReference.class);
         TypeToken<?> typeToken = resolveGenericType(resolvingCls, parameter.getParameterizedType());
-        Type inputType = resolveInputTypeDefinition(typeToken, isNotNull);
-
-        if (inputType == null && parameter.isAnnotationPresent(GraphQLMutationType.class)) {
-            inputType = resolveType(parameter.getAnnotation(GraphQLMutationType.class).value());
-
-            if (isGraphQLList(typeToken)) {
-                inputType = new ListType(inputType);
-            }
-
-            if (isNotNull) {
-                inputType = new NonNullType(inputType);
-            }
-        }
+        Type inputType = resolveInputTypeDefinition(typeToken, typeReference, isNotNull);
 
         if (inputType != null) {
             InputValueDefinition argument = InputValueDefinition.newInputValueDefinition()
                     .description(resolveDescription(parameter))
-                    .defaultValue(resolveArgumentDefaultValue(parameter, typeToken))
+                    .defaultValue(resolveArgumentDefaultValue(parameter, typeToken, typeReference))
                     .directives(resolveDirective(parameter))
                     .name(resolveArgumentName(parameter))
                     .type(inputType)
                     .build();
 
             return Stream.of(argument);
-        } else {
-            //将输入参数无法识别为 GraphQL Input 的 Java 对象的 Field 参数进行拆解，转换为一组 Input Value
+        } else if (!isGraphQLList(typeToken)) {
+            //泛参数解析。将输入参数无法识别为 GraphQL Input 的 Java 对象的 Field 参数进行拆解，转换为一组 Input Value
             return resolveClassExtensions(typeToken, ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
                     .flatMap(ele ->
                             resolveFieldStream(ele,
                                     andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> isNotIgnore(method, field, views)),
-                                    (method, field) -> resolveFieldAsArgument(resolvingCls, method, field, views)
+                                    (method, field) -> resolveInputField(resolvingCls, method, field, views)
                             )
                     );
         }
+
+        throw new IllegalArgumentException(String.format("Can not resolve GraphQL Input Type witch parameter %s of method %s#%s", parameter.getName(), resolvingCls.getName(), resolvingMethod.getName()));
     }
 
     /**
@@ -393,26 +392,25 @@ public final class DefinitionResolver {
      * @param views        当前 GraphQLView 信息
      * @return GraphQL Input Value 定义
      */
-    private InputValueDefinition resolveFieldAsArgument(Class<?> resolvingCls, Method method, Field field, Class<?>[] views) {
-        Parameter parameter = method.getParameters()[0];
-        GraphQLNotNull notNull = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLNotNull.class))
-                .orElse(parameter.getAnnotation(GraphQLNotNull.class));
-        GraphQLMutationType mutationType = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLMutationType.class))
-                .orElse(parameter.getAnnotation(GraphQLMutationType.class));
+    private InputValueDefinition resolveInputField(Class<?> resolvingCls, Method method, Field field, Class<?>[] views) {
+        checkArgument(method.getParameterCount() == 1, String.format("Setter of method %s#%s must have only parameter", method.getDeclaringClass().getName(), method.getName()));
 
-        TypeToken<?> paramType = TypeToken.of(parameter.getParameterizedType());
+        GraphQLNotNull notNull = resolveFieldAnnotation(method, field, GraphQLNotNull.class);
+        GraphQLMutationType mutationType = resolveFieldAnnotation(method, field, GraphQLMutationType.class);
+        GraphQLTypeReference typeReference = resolveFieldAnnotation(method, field, GraphQLTypeReference.class);
 
-        if (field != null && paramType.isSupertypeOf(field.getGenericType())) {
+        boolean isNotNull = isNotNull(notNull, views);
+        TypeToken<?> paramType = TypeToken.of(method.getParameters()[0].getParameterizedType());
+
+        if (field != null) {
             paramType = TypeToken.of(field.getGenericType());
         }
 
-        if (mutationType != null) {
-            paramType = TypeToken.of(mutationType.value());
-        }
+        Type inputType = resolveInputTypeDefinition(paramType, typeReference, isNotNull);
 
-        Type inputType = resolveInputTypeDefinition(paramType, isNotNull(notNull, views));
+        if (inputType == null && mutationType != null) {
+            inputType = resolveGraphQLType(paramType, cls -> resolveMutationType(mutationType), isNotNull);
+        }
 
         return InputValueDefinition.newInputValueDefinition()
                 .comments(resolveComment(method, field))
@@ -425,11 +423,23 @@ public final class DefinitionResolver {
                 .build();
     }
 
-    private Value resolveInputDefaultValue(GraphQLDefaultValue defaultValue, TypeToken<?> typeToken) {
-        GraphQLScalarType scalarType = Optional.ofNullable(resolveInputTypeDefinition(typeToken, false))
+    /**
+     * 解析 GraphQL 输入参数
+     *
+     * @param resolvingCls 当前解析类
+     * @param method       关联的方法
+     * @param field        同名字段
+     * @return Input Value 定义
+     */
+    private InputValueDefinition resolveInputField(Class<?> resolvingCls, Method method, Field field) {
+        return resolveInputField(resolvingCls, method, field, new Class[0]);
+    }
+
+    private Value resolveInputDefaultValue(GraphQLDefaultValue defaultValue, TypeToken<?> typeToken, GraphQLTypeReference typeReference) {
+        GraphQLScalarType scalarType = Optional.ofNullable(resolveInputTypeDefinition(typeToken, typeReference, false))
                 .map(type -> TypeInfo.typeInfo(type).getName())
                 .map(name -> typeRepository.getScalarType(name)
-                        .orElse(getStandardScalarType(name).orElse(null)))
+                        .orElseGet(() -> getStandardScalarType(name).orElse(null)))
                 .orElse(null);
 
         return Optional.ofNullable(defaultValue)
@@ -451,12 +461,13 @@ public final class DefinitionResolver {
     /**
      * 解析参数默认值
      *
-     * @param parameter 关联参数
-     * @param typeToken 参数类型
+     * @param parameter     关联参数
+     * @param typeToken     参数类型
+     * @param typeReference 类型引用
      * @return 参数默认值
      */
-    private Value resolveArgumentDefaultValue(Parameter parameter, TypeToken<?> typeToken) {
-        return resolveInputDefaultValue(parameter.getAnnotation(GraphQLDefaultValue.class), typeToken);
+    private Value resolveArgumentDefaultValue(Parameter parameter, TypeToken<?> typeToken, GraphQLTypeReference typeReference) {
+        return resolveInputDefaultValue(parameter.getAnnotation(GraphQLDefaultValue.class), typeToken, typeReference);
     }
 
     /**
@@ -467,11 +478,10 @@ public final class DefinitionResolver {
      * @return 字段默认值
      */
     private Value resolveFieldInputDefaultValue(Method method, Field field) {
-        GraphQLDefaultValue defaultValue = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLDefaultValue.class))
-                .orElse(method.getAnnotation(GraphQLDefaultValue.class));
+        GraphQLDefaultValue defaultValue = resolveFieldAnnotation(method, field, GraphQLDefaultValue.class);
+        GraphQLTypeReference typeReference = resolveFieldAnnotation(method, field, GraphQLTypeReference.class);
 
-        return resolveInputDefaultValue(defaultValue, TypeToken.of(method.getParameters()[0].getParameterizedType()));
+        return resolveInputDefaultValue(defaultValue, TypeToken.of(method.getParameters()[0].getParameterizedType()), typeReference);
     }
 
     /**
@@ -490,65 +500,68 @@ public final class DefinitionResolver {
     }
 
     /**
-     * 解析 GraphQL 输入参数
-     *
-     * @param cls    当前解析类
-     * @param method 关联的方法
-     * @param field  同名字段
-     * @return Input Value 定义
-     */
-    private InputValueDefinition resolveInputField(Class<?> cls, Method method, Field field) {
-        checkArgument(method.getParameterCount() == 1);
-
-        GraphQLNotNull notNull = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLNotNull.class))
-                .orElse(method.getAnnotation(GraphQLNotNull.class));
-
-        GraphQLMutationType mutationType = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLMutationType.class))
-                .orElse(method.getAnnotation(GraphQLMutationType.class));
-
-        Parameter parameter = method.getParameters()[0];
-        TypeToken<?> paramType = TypeToken.of(parameter.getParameterizedType());
-
-        if (field != null && paramType.isSupertypeOf(field.getGenericType())) {
-            paramType = TypeToken.of(field.getGenericType());
-        }
-
-        if (mutationType != null) {
-            paramType = TypeToken.of(mutationType.value());
-        }
-
-        Type inputType = resolveInputTypeDefinition(paramType, isNotNull(notNull, new Class[0]));
-
-        return InputValueDefinition.newInputValueDefinition()
-                .comments(resolveComment(method, field))
-                .defaultValue(resolveFieldInputDefaultValue(method, field))
-                .description(resolveDescription(cls, method, field))
-                .directives(resolveDirective(method, field))
-                .name(resolveFieldName(cls, method, field))
-                .sourceLocation(resolveSourceLocation(method, field))
-                .type(requireNonNull(inputType, String.format("Can not resolve type '%s' as input type", paramType)))
-                .build();
-    }
-
-    /**
      * 解析输入类型
      *
      * @param typeToken 类型信息
      * @param isNotNull 是否非空
      * @return GraphQL 类型
      */
-    private Type resolveInputTypeDefinition(TypeToken<?> typeToken, Boolean isNotNull) {
-        return wrapGraphQLType(typeToken, cls -> typeRepository.findMappingScalarType(cls)
-                .map(ele -> new TypeName(ele.getName()))
-                .orElseGet(() -> {
-                    if (cls.isAnnotationPresent(GraphQLInput.class) || cls.isEnum()) {
-                        return resolveType(cls);
-                    }
+    private Type resolveInputTypeDefinition(TypeToken<?> typeToken, GraphQLTypeReference typeReference, Boolean isNotNull) {
+        return resolveGraphQLType(typeToken, cls -> {
+            if (typeReference != null) {
+                return resolveTypeReference(typeReference);
+            }
 
-                    return null;
-                }), isNotNull);
+            if (cls.isAnnotationPresent(GraphQLInput.class) || cls.isEnum()) {
+                return resolveType(cls);
+            }
+
+            return null;
+        }, isNotNull);
+    }
+
+    /**
+     * 包装 GraphQL 类型。自动对 Java 类型进行拆包，判断是否为 List 类型并重新封装。
+     *
+     * @param typeToken Java 类型
+     * @param orElseGet 非 GraphQL 基础类型提供者
+     * @param isNotNull 是否要求非空
+     * @param <T>       GraphQL 类型
+     * @return GraphQL Type
+     */
+    @SuppressWarnings({"UnstableApiUsage", "unchecked"})
+    private <T extends Type> T resolveGraphQLType(TypeToken<?> typeToken, Function<Class<?>, ? extends Type> orElseGet, Boolean isNotNull) {
+        boolean isArray = isGraphQLList(typeToken);
+        Class<?> javaType = typeToken.getRawType();
+
+        if (isArray) {
+            if (typeToken.getComponentType() != null) {
+                javaType = typeToken.getComponentType().getRawType();
+            } else {
+                TypeVariable<? extends Class<?>>[] typeParameters = typeToken.getRawType().getTypeParameters();
+
+                checkState(typeParameters.length == 1);
+
+                javaType = typeToken.resolveType(typeParameters[0]).getRawType();
+            }
+        }
+
+        Class<?> finalJavaType = javaType;
+        Type result = typeRepository.findMappingScalarType(javaType)
+                .map(ele -> (Type) new TypeName(ele.getName()))
+                .orElseGet(() -> orElseGet.apply(finalJavaType));
+
+        if (result != null) {
+            if (isArray) {
+                result = new ListType(result);
+            }
+
+            if (isNotNull) {
+                result = new NonNullType(result);
+            }
+        }
+
+        return (T) result;
     }
 
     /**

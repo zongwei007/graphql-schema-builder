@@ -3,6 +3,7 @@ package com.ltsoft.graphql.example;
 import com.ltsoft.graphql.annotations.GraphQLArgument;
 import com.ltsoft.graphql.annotations.GraphQLMutationType;
 import com.ltsoft.graphql.annotations.GraphQLType;
+import com.ltsoft.graphql.annotations.GraphQLTypeReference;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,7 +24,7 @@ public class ArgumentService {
         return list;
     }
 
-    public List<MutationObject> basicList(@GraphQLArgument("list") @GraphQLMutationType(MutationInputObject.class) List<MutationObject> list) {
+    public List<MutationObject> basicList(@GraphQLArgument("list") @GraphQLTypeReference(type = MutationInputObject.class) List<MutationObject> list) {
         return list;
     }
 
@@ -31,7 +32,7 @@ public class ArgumentService {
         return input;
     }
 
-    public MutationObject basic(@GraphQLArgument("input") @GraphQLMutationType(MutationInputObject.class) MutationObject input) {
+    public MutationObject basic(@GraphQLArgument("input") @GraphQLTypeReference(type = MutationInputObject.class) MutationObject input) {
         return input;
     }
 
