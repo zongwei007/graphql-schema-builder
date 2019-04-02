@@ -14,24 +14,30 @@ import java.util.function.Supplier;
 @GraphQLDescription("Normal GraphQL Object")
 public class NormalObject {
 
+    @GraphQLField
     @GraphQLDescription("GraphQL foo field")
     private String foo;
 
+    @GraphQLField
     @GraphQLName("barList")
     private String[] bar;
 
+    @GraphQLField
     @GraphQLNotNull
     private List<String> fooList;
 
+    @GraphQLField
     @GraphQLTypeReference(name = "CustomEnum")
     private Integer type;
 
+    @GraphQLField
     @GraphQLNotNull
     @GraphQLDescription("GraphQL count field")
     public Integer getCount(@GraphQLArgument("cnd") @GraphQLDescription("A cnd argument") @GraphQLDefaultValue("1") @GraphQLNotNull String cnd) {
         return Integer.parseInt(cnd);
     }
 
+    @GraphQLField
     @GraphQLNotNull
     public Set<OffsetDateTime> filterDateTimes(@GraphQLArgument("args") @GraphQLNotNull OffsetDateTime... args) {
         return new HashSet<>(Arrays.asList(args));

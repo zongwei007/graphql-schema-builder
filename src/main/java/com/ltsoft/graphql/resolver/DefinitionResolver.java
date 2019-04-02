@@ -14,7 +14,6 @@ import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -262,7 +261,7 @@ public final class DefinitionResolver {
     private List<FieldDefinition> resolveFields(Class<?> cls, Predicate<Class<?>> filter) {
         return resolveClassExtensions(TypeToken.of(cls), filter)
                 .flatMap(ele -> resolveFieldStream(ele,
-                        andBiPredicate((method, field) -> !SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
+                        resolveFieldFilter(cls, ele, (method, field) -> !SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
                         (method, field) -> resolveField(cls, method, field))
                 )
                 .collect(new FieldDefinitionCollector<>(FieldDefinition::getName));
@@ -374,7 +373,7 @@ public final class DefinitionResolver {
             return resolveClassExtensions(typeToken, ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class))
                     .flatMap(ele ->
                             resolveFieldStream(ele,
-                                    andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> isNotIgnore(method, field, views)),
+                                    resolveFieldFilter(resolvingCls, ele, (method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), (method, field) -> isNotIgnore(method, field, views)),
                                     (method, field) -> resolveInputField(resolvingCls, method, field, views)
                             )
                     );
@@ -493,7 +492,7 @@ public final class DefinitionResolver {
     private List<InputValueDefinition> resolveInputFields(Class<?> cls) {
         return resolveClassExtensions(TypeToken.of(cls), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class) || ele.isAnnotationPresent(GraphQLInterface.class) || ele.isAnnotationPresent(GraphQLTypeExtension.class))
                 .flatMap(ele -> resolveFieldStream(ele,
-                        andBiPredicate((method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
+                        resolveFieldFilter(cls, ele, (method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
                         (method, field) -> resolveInputField(cls, method, field)
                 ))
                 .collect(new FieldDefinitionCollector<>(InputValueDefinition::getName));
@@ -562,23 +561,6 @@ public final class DefinitionResolver {
         }
 
         return (T) result;
-    }
-
-    /**
-     * 将多个 BiPredicate 按 and 合并
-     *
-     * @param predicates 断言
-     * @return 合并后的断言
-     */
-    @SafeVarargs
-    private static <T, U> BiPredicate<T, U> andBiPredicate(BiPredicate<T, U>... predicates) {
-        BiPredicate<T, U> predicate = predicates[0];
-
-        for (int i = 1; i < predicates.length; i++) {
-            predicate = predicate.and(predicates[i]);
-        }
-
-        return predicate;
     }
 
 }

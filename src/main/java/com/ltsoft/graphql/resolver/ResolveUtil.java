@@ -573,16 +573,11 @@ public final class ResolveUtil {
         return Stream.concat(withParents, Arrays.stream(fieldExtensions));
     }
 
-    static <T> Stream<T> resolveFieldStream(Class<?> cls, BiPredicate<Method, Field> filter, BiFunction<Method, Field, T> consumer) {
-        Method[] methods = cls.getMethods();
-        Field[] fields = cls.getDeclaredFields();
+    static <T> Stream<T> resolveFieldStream(Class<?> currentCls, BiPredicate<Method, Field> filter, BiFunction<Method, Field, T> consumer) {
+        Method[] methods = currentCls.getMethods();
+        Field[] fields = currentCls.getDeclaredFields();
         Map<String, Field> fieldNameMap = Arrays.stream(fields)
                 .collect(Collectors.toMap(Field::getName, Function.identity()));
-
-        boolean needOmitting = Stream.concat(
-                Arrays.stream(methods).map(method -> method.isAnnotationPresent(GraphQLField.class)),
-                Arrays.stream(fields).map(field -> field.isAnnotationPresent(GraphQLField.class))
-        ).anyMatch(Boolean::booleanValue);
 
         AtomicInteger index = new AtomicInteger();
 
@@ -590,11 +585,7 @@ public final class ResolveUtil {
             Method method = methods[index.getAndIncrement()];
             Field field = fieldNameMap.get(simplifyName(method.getName()));
 
-            if (needOmitting && !(method.isAnnotationPresent(GraphQLField.class) || (field != null && field.isAnnotationPresent(GraphQLField.class)))) {
-                return null;
-            }
-
-            if (!method.getDeclaringClass().equals(cls)) {
+            if (!method.getDeclaringClass().equals(currentCls)) {
                 return null;
             }
 
@@ -609,5 +600,50 @@ public final class ResolveUtil {
     @SuppressWarnings("UnstableApiUsage")
     public static boolean isGraphQLList(TypeToken<?> typeToken) {
         return typeToken.isArray() || typeToken.isSubtypeOf(Collection.class);
+    }
+
+    /**
+     * 按 {@link GraphQLFieldFilter} 解析字段过滤断言。
+     *
+     * @param resolvingCls 当前解析类
+     * @param currentCls   当前处理类
+     * @param predicates   其它断言，按 {@link BiPredicate#and(BiPredicate)} 进行合并。
+     * @return 合并后的断言
+     */
+    @SafeVarargs
+    static BiPredicate<Method, Field> resolveFieldFilter(Class<?> resolvingCls, Class<?> currentCls, BiPredicate<Method, Field>... predicates) {
+        Class<? extends BiPredicate<Method, Field>> predicateType = Optional.ofNullable(resolvingCls.getAnnotation(GraphQLFieldFilter.class))
+                .map(GraphQLFieldFilter::value)
+                .orElse(null);
+
+        BiPredicate<Method, Field> predicate = (method, field) -> true;
+
+        if (predicateType != null) {
+            try {
+                predicate = predicateType.getConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new IllegalArgumentException(String.format("Can not construct field filter '%s'", predicateType.getName()), e);
+            }
+        }
+
+        if (Arrays.stream(currentCls.getMethods()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class)) || Arrays.stream(currentCls.getDeclaredFields()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class))) {
+            predicate = predicate.and(((method, field) -> {
+                if (field != null) {
+                    return field.isAnnotationPresent(GraphQLField.class);
+                }
+
+                if (method != null) {
+                    return method.isAnnotationPresent(GraphQLField.class);
+                }
+
+                return false;
+            }));
+        }
+
+        for (BiPredicate<Method, Field> item : predicates) {
+            predicate = predicate.and(item);
+        }
+
+        return predicate;
     }
 }

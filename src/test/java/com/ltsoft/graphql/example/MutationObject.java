@@ -8,13 +8,16 @@ import com.ltsoft.graphql.view.CreatedView;
 @GraphQLDefaultDataFetcher(EmptyDataFetcherFactory.class)
 public class MutationObject {
 
+    @GraphQLField
     @GraphQLIgnore(view = CreatedView.class)
     @GraphQLNotNull
     private Long id;
 
+    @GraphQLField
     @GraphQLNotNull(view = CreatedView.class)
     private String name;
 
+    @GraphQLField
     @GraphQLMutationType(MutationInputObject.class)
     private MutationObject parent;
 
