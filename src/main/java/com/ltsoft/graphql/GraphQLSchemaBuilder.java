@@ -32,9 +32,9 @@ public final class GraphQLSchemaBuilder {
     private final List<TypeVisibilityFilter> typeFilters = new ArrayList<>();
     private final List<TypeDefinitionRegistry> typeDefinitionRegistries = new ArrayList<>();
     private final List<TypeResolver<?>> typeResolvers = new ArrayList<>();
+    private final List<UnaryOperator<Document.Builder>> documentProcessors = new ArrayList<>();
+    private final List<UnaryOperator<RuntimeWiring.Builder>> runtimeWiringProcessors = new ArrayList<>();
 
-    private UnaryOperator<Document.Builder> documentProcessor = UnaryOperator.identity();
-    private UnaryOperator<RuntimeWiring.Builder> runtimeWiringProcessor = UnaryOperator.identity();
     private SchemaGenerator.Options options = SchemaGenerator.Options.defaultOptions();
     private InstanceFactory instanceFactory = new DefaultInstanceFactory();
 
@@ -43,48 +43,50 @@ public final class GraphQLSchemaBuilder {
         return this;
     }
 
-    public GraphQLSchemaBuilder withArgumentFactory(ArgumentProviderFactory<?>... factories) {
-        Collections.addAll(argumentProviderFactories, factories);
-        return this;
-    }
-
-    public GraphQLSchemaBuilder withPackage(String... packages) {
+    public GraphQLSchemaBuilder addPackage(String... packages) {
         Collections.addAll(packageNames, packages);
         return this;
     }
 
-    public GraphQLSchemaBuilder withType(Class<?>... classes) {
+    public GraphQLSchemaBuilder addType(Class<?>... classes) {
         Collections.addAll(types, classes);
         return this;
     }
 
-    public GraphQLSchemaBuilder withFieldFilter(FieldVisibilityFilter... filters) {
+    public GraphQLSchemaBuilder argumentFactory(ArgumentProviderFactory<?>... factories) {
+        Collections.addAll(argumentProviderFactories, factories);
+        return this;
+    }
+
+    public GraphQLSchemaBuilder fieldFilter(FieldVisibilityFilter... filters) {
         Collections.addAll(fieldFilters, filters);
         return this;
     }
 
-    public GraphQLSchemaBuilder withTypeFilter(TypeVisibilityFilter... filters) {
+    public GraphQLSchemaBuilder typeFilter(TypeVisibilityFilter... filters) {
         Collections.addAll(typeFilters, filters);
         return this;
     }
 
-    public GraphQLSchemaBuilder withTypeResolver(TypeResolver<?>... resolvers) {
+    public GraphQLSchemaBuilder typeResolver(TypeResolver<?>... resolvers) {
         Collections.addAll(typeResolvers, resolvers);
         return this;
     }
 
-    public GraphQLSchemaBuilder withTypeDefinitionRegistry(TypeDefinitionRegistry... registries) {
+    public GraphQLSchemaBuilder typeDefinitionRegistry(TypeDefinitionRegistry... registries) {
         Collections.addAll(typeDefinitionRegistries, registries);
         return this;
     }
 
-    public GraphQLSchemaBuilder document(UnaryOperator<Document.Builder> builderUnaryOperator) {
-        this.documentProcessor = requireNonNull(builderUnaryOperator);
+    @SafeVarargs
+    public final GraphQLSchemaBuilder document(UnaryOperator<Document.Builder>... builderUnaryOperators) {
+        Collections.addAll(documentProcessors, builderUnaryOperators);
         return this;
     }
 
-    public GraphQLSchemaBuilder runtimeWiring(UnaryOperator<RuntimeWiring.Builder> builderUnaryOperator) {
-        this.runtimeWiringProcessor = requireNonNull(builderUnaryOperator);
+    @SafeVarargs
+    public final GraphQLSchemaBuilder runtimeWiring(UnaryOperator<RuntimeWiring.Builder>... builderUnaryOperators) {
+        Collections.addAll(runtimeWiringProcessors, builderUnaryOperators);
         return this;
     }
 
@@ -114,7 +116,7 @@ public final class GraphQLSchemaBuilder {
 
         documentBuilder.getAllExtensionScalars().forEach(runtimeWiringBuilder::withScalar);
 
-        Document document = documentProcessor.apply(documentBuilder.builder()).build();
+        Document document = combineUnaryOperator(documentProcessors).apply(documentBuilder.builder()).build();
         TypeDefinitionRegistry typeDefinitionRegistry = new SchemaParser().buildRegistry(document);
 
         for (TypeDefinitionRegistry registry : typeDefinitionRegistries) {
@@ -125,11 +127,17 @@ public final class GraphQLSchemaBuilder {
                 .setArgumentFactories(argumentProviderFactories)
                 .setInstanceFactory(instanceFactory);
 
-        RuntimeWiring runtimeWiring = runtimeWiringProcessor.apply(
+        RuntimeWiring runtimeWiring = combineUnaryOperator(runtimeWiringProcessors).apply(
                 runtimeWiringBuilder.builder().fieldVisibility(new RuntimeFieldVisibilityFilter(typeFilters, fieldFilters))
         ).build();
 
         return new SchemaGenerator().makeExecutableSchema(options, typeDefinitionRegistry, runtimeWiring);
+    }
+
+    private <T> UnaryOperator<T> combineUnaryOperator(Collection<UnaryOperator<T>> unaryOperators) {
+        return unaryOperators.stream()
+                .reduce((left, right) -> builder -> right.apply(left.apply(builder)))
+                .orElse(UnaryOperator.identity());
     }
 
     private Stream<? extends Class<?>> searchPackage(String packageName) {

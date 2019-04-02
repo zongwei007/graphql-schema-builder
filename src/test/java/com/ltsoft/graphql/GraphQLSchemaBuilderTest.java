@@ -19,7 +19,7 @@ public class GraphQLSchemaBuilderTest {
         GraphQLSchema schema = new GraphQLSchemaBuilder()
                 .addScalar(HelloObject.HelloObjectScalar, HelloObject.class)
                 .instanceFactory(instanceFactory)
-                .withType(RootSchemaService.class, RootQueryService.class, RootMutationService.class)
+                .addType(RootSchemaService.class, RootQueryService.class, RootMutationService.class)
                 .build();
 
         assertThat(schema.getObjectType("Query")).isNotNull();
@@ -36,8 +36,8 @@ public class GraphQLSchemaBuilderTest {
         GraphQLSchema schema = new GraphQLSchemaBuilder()
                 .addScalar(HelloObject.HelloObjectScalar, HelloObject.class)
                 .instanceFactory(instanceFactory)
-                .withPackage("com.ltsoft.graphql.example")
-                .withTypeResolver(new ObjectForTypeResolver.CustomTypeResolver())
+                .addPackage("com.ltsoft.graphql.example")
+                .typeResolver(new ObjectForTypeResolver.CustomTypeResolver())
                 .document(document -> document.definition(customEnum))
                 .build();
 
