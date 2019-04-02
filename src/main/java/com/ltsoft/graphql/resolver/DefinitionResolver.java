@@ -1,6 +1,8 @@
 package com.ltsoft.graphql.resolver;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import com.ltsoft.graphql.TypeResolver;
 import com.ltsoft.graphql.annotations.*;
 import com.ltsoft.graphql.scalars.ScalarTypeRepository;
 import graphql.language.*;
@@ -11,9 +13,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.TypeVariable;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -31,6 +31,8 @@ public final class DefinitionResolver {
     private static Pattern SETTER_PREFIX = Pattern.compile("^set[A-Z]?\\S*");
 
     private final ScalarTypeRepository typeRepository = new ScalarTypeRepository();
+    private final List<TypeResolver<?>> typeResolvers = new ArrayList<>();
+    private final Map<String, TypeDefinition<?>> typeDefinitionExtensions = new HashMap<>();
 
     public DirectiveDefinition directive(Class<?> cls) {
         checkArgument(cls.isAnnotationPresent(GraphQLDirective.class));
@@ -212,11 +214,24 @@ public final class DefinitionResolver {
                 .build();
     }
 
-    public ScalarTypeDefinition scalar(GraphQLScalarType scalarType, Class<?> javaType) {
-        typeRepository.register(javaType, scalarType);
+    /**
+     * 注册类型解析器
+     *
+     * @param resolvers 类型解析器
+     */
+    public void typeResolver(TypeResolver<?>... resolvers) {
+        Collections.addAll(typeResolvers, resolvers);
+    }
 
-        return typeRepository.getScalarTypeDefinition(scalarType.getName())
-                .orElseThrow(IllegalStateException::new);
+    /**
+     * 注册 GraphQL Scalar 类型
+     *
+     * @param scalarType GraphQL Scalar 类型
+     * @param javaType   GraphQL Scalar 类型对应的 Java 类型
+     * @see ScalarTypeRepository#register(Class, GraphQLScalarType)
+     */
+    public void scalar(GraphQLScalarType scalarType, Class<?> javaType) {
+        typeRepository.register(javaType, scalarType);
     }
 
     /**
@@ -249,6 +264,15 @@ public final class DefinitionResolver {
      */
     public ScalarTypeRepository getTypeRepository() {
         return typeRepository;
+    }
+
+    /**
+     * 获取 TypeResolver 解析得到的扩展类型
+     *
+     * @return 类型信息
+     */
+    public Set<TypeDefinition<?>> getTypeDefinitionExtensions() {
+        return ImmutableSet.copyOf(typeDefinitionExtensions.values());
     }
 
     /**
@@ -525,31 +549,53 @@ public final class DefinitionResolver {
      * @param typeToken Java 类型
      * @param orElseGet 非 GraphQL 基础类型提供者
      * @param isNotNull 是否要求非空
-     * @param <T>       GraphQL 类型
      * @return GraphQL Type
      */
-    @SuppressWarnings({"UnstableApiUsage", "unchecked"})
-    private <T extends Type> T resolveGraphQLType(TypeToken<?> typeToken, Function<Class<?>, ? extends Type> orElseGet, Boolean isNotNull) {
+    @SuppressWarnings({"UnstableApiUsage"})
+    private Type resolveGraphQLType(TypeToken<?> typeToken, Function<Class<?>, ? extends Type> orElseGet, Boolean isNotNull) {
         boolean isArray = isGraphQLList(typeToken);
         Class<?> javaType = typeToken.getRawType();
+        TypeToken<?> listTypeToken = null;
 
         if (isArray) {
             if (typeToken.getComponentType() != null) {
-                javaType = typeToken.getComponentType().getRawType();
+                listTypeToken = typeToken.getComponentType();
             } else {
                 TypeVariable<? extends Class<?>>[] typeParameters = typeToken.getRawType().getTypeParameters();
 
                 checkState(typeParameters.length == 1);
 
-                javaType = typeToken.resolveType(typeParameters[0]).getRawType();
+                listTypeToken = typeToken.resolveType(typeParameters[0]);
+            }
+
+            javaType = listTypeToken.getRawType();
+        }
+
+        Type result = typeRepository.findMappingScalarType(javaType)
+                .map(ele -> (Type) new TypeName(ele.getName()))
+                .orElse(null);
+
+        //若非 Scalar 类型，先尝试使用扩展类型解析器识别
+        if (result == null) {
+            java.lang.reflect.Type resolveType = isArray ? listTypeToken.getType() : typeToken.getType();
+            TypeDefinition<?> definition = typeResolvers.stream()
+                    .filter(ele -> ele.isSupport(resolveType))
+                    .findFirst()
+                    .map(ele -> ele.resolve(resolveType))
+                    .orElse(null);
+
+            if (definition != null) {
+                typeDefinitionExtensions.putIfAbsent(definition.getName(), definition);
+                result = new TypeName(definition.getName());
             }
         }
 
-        Class<?> finalJavaType = javaType;
-        Type result = typeRepository.findMappingScalarType(javaType)
-                .map(ele -> (Type) new TypeName(ele.getName()))
-                .orElseGet(() -> orElseGet.apply(finalJavaType));
+        //非扩展类型，使用 fallback 回调识别
+        if (result == null) {
+            result = orElseGet.apply(javaType);
+        }
 
+        //重新包装
         if (result != null) {
             if (isArray) {
                 result = new ListType(result);
@@ -560,7 +606,7 @@ public final class DefinitionResolver {
             }
         }
 
-        return (T) result;
+        return result;
     }
 
 }

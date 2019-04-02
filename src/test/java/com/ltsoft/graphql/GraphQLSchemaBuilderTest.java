@@ -1,9 +1,6 @@
 package com.ltsoft.graphql;
 
-import com.ltsoft.graphql.example.HelloObject;
-import com.ltsoft.graphql.example.RootMutationService;
-import com.ltsoft.graphql.example.RootQueryService;
-import com.ltsoft.graphql.example.RootSchemaService;
+import com.ltsoft.graphql.example.*;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import com.ltsoft.graphql.resolver.ResolveTestUtil;
 import graphql.language.EnumTypeDefinition;
@@ -40,6 +37,7 @@ public class GraphQLSchemaBuilderTest {
                 .addScalar(HelloObject.HelloObjectScalar, HelloObject.class)
                 .instanceFactory(instanceFactory)
                 .withPackage("com.ltsoft.graphql.example")
+                .withTypeResolver(new ObjectForTypeResolver.CustomTypeResolver())
                 .document(document -> document.definition(customEnum))
                 .build();
 

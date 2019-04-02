@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 
+@SuppressWarnings("WeakerAccess")
 public final class GraphQLSchemaBuilder {
 
     private final Map<GraphQLScalarType, Class<?>> scalarTypeMap = new HashMap<>();
@@ -30,6 +31,7 @@ public final class GraphQLSchemaBuilder {
     private final List<FieldVisibilityFilter> fieldFilters = new ArrayList<>();
     private final List<TypeVisibilityFilter> typeFilters = new ArrayList<>();
     private final List<TypeDefinitionRegistry> typeDefinitionRegistries = new ArrayList<>();
+    private final List<TypeResolver<?>> typeResolvers = new ArrayList<>();
 
     private UnaryOperator<Document.Builder> documentProcessor = UnaryOperator.identity();
     private UnaryOperator<RuntimeWiring.Builder> runtimeWiringProcessor = UnaryOperator.identity();
@@ -63,6 +65,11 @@ public final class GraphQLSchemaBuilder {
 
     public GraphQLSchemaBuilder withTypeFilter(TypeVisibilityFilter... filters) {
         Collections.addAll(typeFilters, filters);
+        return this;
+    }
+
+    public GraphQLSchemaBuilder withTypeResolver(TypeResolver<?>... resolvers) {
+        Collections.addAll(typeResolvers, resolvers);
         return this;
     }
 
@@ -103,6 +110,7 @@ public final class GraphQLSchemaBuilder {
                 });
 
         scalarTypeMap.forEach(documentBuilder::addScalar);
+        typeResolvers.forEach(documentBuilder::withTypeResolver);
 
         documentBuilder.getAllExtensionScalars().forEach(runtimeWiringBuilder::withScalar);
 

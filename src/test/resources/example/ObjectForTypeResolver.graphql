@@ -1,0 +1,15 @@
+type CustomStringType {
+  info: String
+}
+
+type ObjectForTypeResolver {
+  customType: [CustomStringType]
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}

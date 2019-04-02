@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+@SuppressWarnings({"UnusedReturnValue", "WeakerAccess"})
 public final class GraphQLDocumentBuilder {
 
     private final Set<Class<?>> types = new HashSet<>();
@@ -17,6 +18,11 @@ public final class GraphQLDocumentBuilder {
 
     public GraphQLDocumentBuilder addScalar(GraphQLScalarType scalarType, Class<?> javaType) {
         resolver.scalar(scalarType, javaType);
+        return this;
+    }
+
+    public GraphQLDocumentBuilder withTypeResolver(TypeResolver<?>... typeResolvers) {
+        resolver.typeResolver(typeResolvers);
         return this;
     }
 
@@ -35,6 +41,7 @@ public final class GraphQLDocumentBuilder {
         types.stream().map(cls -> loadTypeDefinition(cls, resolver))
                 .forEach(builder::definition);
         resolver.getTypeRepository().allExtensionTypeDefinitions().forEach(builder::definition);
+        resolver.getTypeDefinitionExtensions().forEach(builder::definition);
 
         return builder;
     }

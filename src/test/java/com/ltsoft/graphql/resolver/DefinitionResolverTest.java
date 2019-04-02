@@ -6,6 +6,8 @@ import graphql.language.*;
 import graphql.schema.GraphQLScalarType;
 import org.junit.Test;
 
+import java.util.Set;
+
 import static com.ltsoft.graphql.resolver.ResolveTestUtil.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -162,6 +164,19 @@ public class DefinitionResolverTest {
 
         assertThat(printDefinition(definitionResolver, directiveDefinition, example))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/NormalDirective.graphql"));
+    }
+
+    @Test
+    public void testTypeResolver() {
+        DefinitionResolver definitionResolver = new DefinitionResolver();
+        definitionResolver.typeResolver(new ObjectForTypeResolver.CustomTypeResolver());
+
+        ObjectTypeDefinition objectType = definitionResolver.object(ObjectForTypeResolver.class);
+        Set<TypeDefinition<?>> definitions = definitionResolver.getTypeDefinitionExtensions();
+
+        assertThat(definitions).hasSize(1);
+        assertThat(printDefinition(definitionResolver, definitions.iterator().next(), objectType))
+                .isEqualToIgnoringWhitespace(readSchemaExample("/example/ObjectForTypeResolver.graphql"));
     }
 
 }
