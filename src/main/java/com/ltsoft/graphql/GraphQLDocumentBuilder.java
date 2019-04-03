@@ -38,15 +38,14 @@ public final class GraphQLDocumentBuilder {
     public Document.Builder builder() {
         Document.Builder builder = Document.newDocument();
 
-        types.stream().map(cls -> loadTypeDefinition(cls, resolver))
-                .forEach(builder::definition);
+        types.stream().map(this::loadTypeDefinition).forEach(builder::definition);
         resolver.getTypeRepository().allExtensionTypeDefinitions().forEach(builder::definition);
         resolver.getTypeDefinitionExtensions().forEach(builder::definition);
 
         return builder;
     }
 
-    private Definition<?> loadTypeDefinition(Class<?> cls, DefinitionResolver resolver) {
+    private Definition<?> loadTypeDefinition(Class<?> cls) {
         if (cls.isAnnotationPresent(GraphQLType.class)) {
             if (cls.isEnum()) {
                 return resolver.enumeration(cls);
