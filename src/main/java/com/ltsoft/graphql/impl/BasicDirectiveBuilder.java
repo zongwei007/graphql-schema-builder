@@ -37,11 +37,16 @@ public abstract class BasicDirectiveBuilder<T extends Annotation> implements Gra
     }
 
     @SafeVarargs
+    @SuppressWarnings("WeakerAccess")
     protected final <E> void addArgument(String name, E... items) {
+        if (items.length == 0) {
+            return;
+        }
+
         E first = items[0];
 
         if (first instanceof Boolean) {
-            arguments(name, (Boolean[]) items, BooleanValue::new);
+            arguments(name, items, ele -> new BooleanValue((Boolean) ele));
             return;
         }
 
