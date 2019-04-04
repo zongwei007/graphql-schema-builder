@@ -514,7 +514,7 @@ public final class DefinitionResolver {
      * @return GraphQL Input Object 字段描述
      */
     private List<InputValueDefinition> resolveInputFields(Class<?> cls) {
-        return resolveClassExtensions(TypeToken.of(cls), ele -> ele.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class) || ele.isAnnotationPresent(GraphQLInterface.class) || ele.isAnnotationPresent(GraphQLTypeExtension.class))
+        return resolveClassExtensions(TypeToken.of(cls), ele -> hasGraphQLAnnotation(ele, GraphQLInput.class) || hasGraphQLAnnotation(ele, com.ltsoft.graphql.annotations.GraphQLType.class))
                 .flatMap(ele -> resolveFieldStream(ele,
                         resolveFieldFilter(cls, ele, (method, field) -> SETTER_PREFIX.matcher(method.getName()).matches(), ResolveUtil::isNotIgnore),
                         (method, field) -> resolveInputField(cls, method, field)
