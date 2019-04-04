@@ -5,7 +5,7 @@ import graphql.language.TypeDefinition;
 import java.lang.reflect.Type;
 
 /**
- * GraphQL 自定义 TypeDefinition 解析器
+ * GraphQL TypeDefinition 自定义解析器
  *
  * @param <T> GraphQL TypeDefinition 类型
  */
