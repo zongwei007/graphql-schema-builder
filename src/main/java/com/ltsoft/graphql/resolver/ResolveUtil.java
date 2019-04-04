@@ -575,7 +575,7 @@ public final class ResolveUtil {
     }
 
     static <T> Stream<T> resolveFieldStream(Class<?> currentCls, BiPredicate<Method, Field> filter, BiFunction<Method, Field, T> consumer) {
-        Method[] methods = currentCls.getMethods();
+        Method[] methods = currentCls.getDeclaredMethods();
         Field[] fields = currentCls.getDeclaredFields();
         Map<String, Field> fieldNameMap = Arrays.stream(fields)
                 .collect(Collectors.toMap(Field::getName, Function.identity()));
@@ -588,11 +588,7 @@ public final class ResolveUtil {
             //noinspection UnstableApiUsage
             Invokable<?, Object> invokable = Invokable.from(method);
 
-            if (invokable.isStatic() || !invokable.isPublic()) {
-                return null;
-            }
-
-            if (!method.getDeclaringClass().equals(currentCls)) {
+            if (invokable.isStatic() || !invokable.isPublic() || method.isBridge()) {
                 return null;
             }
 
@@ -633,7 +629,7 @@ public final class ResolveUtil {
             }
         }
 
-        if (Arrays.stream(currentCls.getMethods()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class)) || Arrays.stream(currentCls.getDeclaredFields()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class))) {
+        if (Arrays.stream(currentCls.getDeclaredMethods()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class)) || Arrays.stream(currentCls.getDeclaredFields()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class))) {
             predicate = predicate.and(((method, field) -> {
                 if (field != null) {
                     return field.isAnnotationPresent(GraphQLField.class);

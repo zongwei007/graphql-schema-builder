@@ -353,8 +353,7 @@ public final class DefinitionResolver {
     }
 
     private List<InputValueDefinition> resolveDirectiveArguments(Class<?> cls) {
-        return Arrays.stream(cls.getMethods())
-                .filter(method -> method.getDeclaringClass().equals(cls))
+        return Arrays.stream(cls.getDeclaredMethods())
                 .filter(method -> isNotIgnore(method, null))
                 .map(method -> InputValueDefinition.newInputValueDefinition()
                         .comments(resolveComment(method, null))

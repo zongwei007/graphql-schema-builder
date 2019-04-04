@@ -51,6 +51,7 @@ public class GraphQLGenericArgumentProviderTest {
     private GraphQLArgumentProvider buildArgumentProvider(String name) {
         Method method = Arrays.stream(GenericServiceImpl.class.getMethods())
                 .filter(ele -> name.equals(ele.getName()))
+                .filter(ele -> !ele.isBridge())
                 .findFirst()
                 .orElse(null);
 
