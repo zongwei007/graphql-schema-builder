@@ -8,10 +8,13 @@ jdk:
   - openjdk8
 
 script:
-  - mvn test -B
+  - mvn cobertura:cobertura
 
 deploy:
   provider: script
   script: bash scripts/deploy.sh
   on:
     branch: master
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
