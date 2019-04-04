@@ -4,6 +4,7 @@ import com.google.common.base.CaseFormat;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.HashBiMap;
+import com.google.common.reflect.Invokable;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.GraphQLDirectiveBuilder;
 import com.ltsoft.graphql.annotations.*;
@@ -584,6 +585,12 @@ public final class ResolveUtil {
         return Stream.generate(() -> {
             Method method = methods[index.getAndIncrement()];
             Field field = fieldNameMap.get(simplifyName(method.getName()));
+            //noinspection UnstableApiUsage
+            Invokable<?, Object> invokable = Invokable.from(method);
+
+            if (invokable.isStatic() || !invokable.isPublic()) {
+                return null;
+            }
 
             if (!method.getDeclaringClass().equals(currentCls)) {
                 return null;

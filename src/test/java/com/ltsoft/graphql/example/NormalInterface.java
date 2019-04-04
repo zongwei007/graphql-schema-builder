@@ -7,4 +7,7 @@ public interface NormalInterface {
 
     String getInfo();
 
+    static String doNothing() {
+        return null;
+    }
 }
