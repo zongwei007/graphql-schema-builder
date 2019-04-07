@@ -3,10 +3,7 @@ package com.ltsoft.graphql.scalars;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import graphql.Scalars;
-import graphql.language.ScalarTypeDefinition;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLScalarType;
 import org.slf4j.Logger;
@@ -49,8 +46,7 @@ public final class ScalarTypeRepository {
             .build(new ClassGraphQLScalarTypeCacheLoader());
 
     private Map<String, GraphQLScalarType> scalarTypeMap = new HashMap<>();
-    private Map<String, ScalarTypeDefinition> typeDefinitionMap = new HashMap<>();
-    private BiMap<Class<?>, GraphQLScalarType> javaTypeMap = HashBiMap.create();
+    private Map<Class<?>, GraphQLScalarType> javaTypeMap = new HashMap<>();
 
     private ScalarTypeRepository() {
         register(Map.class, ExtendedScalars.Object);
@@ -70,16 +66,17 @@ public final class ScalarTypeRepository {
         register(YearMonth.class, ScalarTypes.GraphQLYearMonth);
 
         //类型映射
-        mapping(Integer.class, Scalars.GraphQLInt);
-        mapping(Double.class, Scalars.GraphQLFloat);
-        mapping(String.class, Scalars.GraphQLString);
-        mapping(Boolean.class, Scalars.GraphQLBoolean);
-        mapping(Long.class, Scalars.GraphQLLong);
-        mapping(Short.class, Scalars.GraphQLShort);
         mapping(Byte.class, Scalars.GraphQLByte);
+        mapping(Boolean.class, Scalars.GraphQLBoolean);
+        mapping(Short.class, Scalars.GraphQLShort);
+        mapping(Integer.class, Scalars.GraphQLInt);
+        mapping(Long.class, Scalars.GraphQLLong);
+        mapping(Float.class, Scalars.GraphQLFloat);
+        mapping(Double.class, Scalars.GraphQLFloat);
+        mapping(Character.class, Scalars.GraphQLChar);
+        mapping(String.class, Scalars.GraphQLString);
         mapping(BigInteger.class, Scalars.GraphQLBigInteger);
         mapping(BigDecimal.class, Scalars.GraphQLBigDecimal);
-        mapping(Character.class, Scalars.GraphQLChar);
     }
 
     void register(GraphQLScalarType... types) {
@@ -87,8 +84,6 @@ public final class ScalarTypeRepository {
             if (scalarTypeMap.putIfAbsent(type.getName(), type) != null) {
                 LOGGER.warn("GraphQLScalarType {} has been registered", type.getName());
             }
-
-            typeDefinitionMap.putIfAbsent(type.getName(), new ScalarTypeDefinition(type.getName()));
         }
     }
 
