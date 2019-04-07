@@ -86,6 +86,12 @@ public final class ResolveUtil {
                 .orElse(fieldName);
     }
 
+    @SuppressWarnings("WeakerAccess")
+    public static Optional<String> resolveDescription(Class<?> cls) {
+        return Optional.ofNullable(cls.getAnnotation(GraphQLDescription.class))
+                .map(GraphQLDescription::value);
+    }
+
     /**
      * 格式化 GraphQL 类型/字段名称
      *

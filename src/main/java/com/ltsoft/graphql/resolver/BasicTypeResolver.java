@@ -5,7 +5,6 @@ import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.TypeProvider;
 import com.ltsoft.graphql.TypeResolver;
 import com.ltsoft.graphql.annotations.GraphQLComment;
-import com.ltsoft.graphql.annotations.GraphQLDescription;
 import com.ltsoft.graphql.annotations.GraphQLTypeExtension;
 import com.ltsoft.graphql.provider.ExtensionTypeProvider;
 import graphql.language.*;
@@ -67,8 +66,7 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
      * @return 类型描述
      */
     Description getDescription(Class<?> cls) {
-        return Optional.ofNullable(cls.getAnnotation(GraphQLDescription.class))
-                .map(GraphQLDescription::value)
+        return resolveDescription(cls)
                 .map(str -> new Description(str, getSourceLocation(cls), str.contains("\n")))
                 .orElse(null);
     }
