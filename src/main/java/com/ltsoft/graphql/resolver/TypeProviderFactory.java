@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static com.ltsoft.graphql.resolver.ResolveUtil.canResolve;
 import static com.ltsoft.graphql.resolver.ResolveUtil.isGraphQLObjectLikeType;
 import static java.util.Objects.requireNonNull;
 
@@ -32,7 +33,9 @@ public final class TypeProviderFactory {
     private InstanceFactory instanceFactory = new DefaultInstanceFactory();
 
     public void addClass(Class<?> type) {
-        addType(type);
+        if (canResolve(type)) {
+            addType(type);
+        }
     }
 
     public void addScalar(GraphQLScalarType scalarType, Class<?> javaType) {

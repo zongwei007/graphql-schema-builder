@@ -52,7 +52,7 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
                 .comments(getComment(cls))
                 .description(getDescription(cls))
                 .directives(getDirective(cls, resolver))
-                .fieldDefinitions(getFieldDefinitions(cls, this::isGraphQLType, resolver))
+                .fieldDefinitions(getFieldDefinitions(cls, this::isGraphQLField, resolver))
                 .implementz(resolveInterfaces(cls, resolver))
                 .name(resolveTypeName(cls))
                 .sourceLocation(getSourceLocation(cls))
@@ -85,8 +85,8 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
                 .collect(Collectors.toList());
     }
 
-    private boolean isGraphQLType(FieldInformation info) {
-        return info.test((method, field) -> isSupport(method.getDeclaringClass()));
+    private boolean isGraphQLField(FieldInformation info) {
+        return info.test((method, field) -> isSupport(method.getDeclaringClass())) && info.isNotIgnore();
     }
 
     private void loadDataFetcher(Class<?> cls, RuntimeWiring.Builder wiringBuilder) {
