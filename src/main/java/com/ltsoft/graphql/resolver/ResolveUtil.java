@@ -36,20 +36,6 @@ public final class ResolveUtil {
     private static final Pattern METHOD_NAME_PREFIX = Pattern.compile("^(is|get|set)([A-Z])");
 
     /**
-     * 解析 GraphQL 类型
-     *
-     * @param cls 需要解析的类
-     * @return GraphQL 类型
-     */
-    static TypeName resolveType(Class<?> cls) {
-        return TypeName.newTypeName()
-                .comments(resolveComment(cls))
-                .name(resolveTypeName(cls))
-                .sourceLocation(resolveSourceLocation(cls))
-                .build();
-    }
-
-    /**
      * 解析 GraphQL 类型名称。支持 @GraphQLTypeExtension 注解。
      *
      * @param cls 需要解析的类
@@ -109,7 +95,7 @@ public final class ResolveUtil {
      * @param javaType      字段所属 Java 类型
      * @return 格式化结果
      */
-    private static String formatName(Class<? extends BiFunction<String, Class<?>, String>> formatterType, String name, Class<?> javaType) {
+    static String formatName(Class<? extends BiFunction<String, Class<?>, String>> formatterType, String name, Class<?> javaType) {
         try {
             BiFunction<String, Class<?>, String> formatter = formatterType.getConstructor().newInstance();
             String result = formatter.apply(name, javaType);
@@ -145,42 +131,6 @@ public final class ResolveUtil {
                 .map(GraphQLDescription::value)
                 .map(str -> new Description(str, resolveSourceLocation(cls), str.contains("\n")))
                 .orElse(null);
-    }
-
-    /**
-     * 解析 GraphQL 字段描述
-     *
-     * @param method 所需要解析的方法
-     * @param field  关联字段
-     * @return 字段描述
-     */
-    @SuppressWarnings("WeakerAccess")
-    public static Description resolveDescription(Class<?> resolvingCls, Method method, Field field) {
-        String description = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLDescription.class))
-                .map(GraphQLDescription::value)
-                .orElseGet(() ->
-                        Optional.ofNullable(method)
-                                .map(ele -> ele.getAnnotation(GraphQLDescription.class))
-                                .map(GraphQLDescription::value)
-                                .orElse(null)
-                );
-
-        if (method != null) {
-            String finalDescription = description;
-
-            description = Optional.of(method.getDeclaringClass())
-                    .map(ele -> ele.getAnnotation(GraphQLFieldDescription.class))
-                    .map(GraphQLFieldDescription::value)
-                    .map(type -> formatName(type, finalDescription, resolvingCls))
-                    .orElse(description);
-        }
-
-        if (description != null) {
-            return new Description(description, resolveSourceLocation(method, field), description.contains("\n"));
-        }
-
-        return null;
     }
 
     /**
@@ -258,27 +208,6 @@ public final class ResolveUtil {
                 .orElse(Collections.emptyList());
     }
 
-    @SuppressWarnings("UnstableApiUsage")
-    static List<Comment> resolveComment(Method method, Field field) {
-        String comment = Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(GraphQLComment.class))
-                .map(GraphQLComment::value)
-                .orElseGet(() ->
-                        Optional.ofNullable(method.getAnnotation(GraphQLComment.class))
-                                .map(GraphQLComment::value)
-                                .orElse(null)
-                );
-
-        if (comment != null) {
-            return LINE_SPLITTER.splitToList(comment)
-                    .stream()
-                    .map(ele -> new Comment(ele, resolveSourceLocation(method, field)))
-                    .collect(Collectors.toList());
-        }
-
-        return Collections.emptyList();
-    }
-
     /**
      * 模拟 SourceLocation，仅记录类名
      *
@@ -287,25 +216,6 @@ public final class ResolveUtil {
      */
     static SourceLocation resolveSourceLocation(Class<?> cls) {
         return new SourceLocation(0, 0, cls.getName());
-    }
-
-    /**
-     * 模拟 SourceLocation，记录类名和方法/字段名
-     *
-     * @param method 关联方法
-     * @param field  同名字段
-     * @return SourceLocation 信息
-     */
-    static SourceLocation resolveSourceLocation(Method method, Field field) {
-        String name;
-
-        if (field != null) {
-            name = String.format("%s.%s", field.getDeclaringClass().getName(), field.getName());
-        } else {
-            name = String.format("%s#%s", method.getDeclaringClass().getName(), method.getName());
-        }
-
-        return new SourceLocation(0, 0, name);
     }
 
     /**
@@ -419,17 +329,6 @@ public final class ResolveUtil {
                 .findFirst()
                 .map(ele -> ele.builder(annotation).build())
                 .orElse(null);
-    }
-
-    private static List<Directive> resolveDirective(Annotation[] annotations) {
-        return Arrays.stream(annotations)
-                .map(ResolveUtil::resolveDirective)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
-    static List<Directive> resolveDirective(Parameter parameter) {
-        return resolveDirective(parameter.getAnnotations());
     }
 
     static Stream<FieldInformation> resolveFields(Class<?> cls) {

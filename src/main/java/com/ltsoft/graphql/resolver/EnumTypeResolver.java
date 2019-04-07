@@ -28,6 +28,7 @@ public class EnumTypeResolver extends BasicTypeResolver<EnumTypeDefinition> {
                 .filter(FieldInformation::isNotIgnore)
                 .map(info ->
                         EnumValueDefinition.newEnumValueDefinition()
+                                .comments(info.getComments())
                                 .description(info.getDescription())
                                 .directives(info.getDirectives(resolver))
                                 .name(info.getName())

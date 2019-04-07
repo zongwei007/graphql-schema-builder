@@ -61,7 +61,7 @@ class ArgumentInformation {
             InputValueDefinition argument = InputValueDefinition.newInputValueDefinition()
                     .description(getDescription())
                     .defaultValue(getDefaultValue(inputType))
-                    .directives(getDirectives())
+                    .directives(getDirectives(resolver))
                     .name(getName())
                     .type(inputType)
                     .build();
@@ -96,8 +96,8 @@ class ArgumentInformation {
         return resolveInputDefaultValue(parameter.getAnnotation(GraphQLDefaultValue.class), inputType, isEnum);
     }
 
-    private List<Directive> getDirectives() {
-        return resolveDirective(parameter);
+    private List<Directive> getDirectives(Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+        return resolveDirective(parameter.getAnnotations(), resolver);
     }
 
     private String getName() {
