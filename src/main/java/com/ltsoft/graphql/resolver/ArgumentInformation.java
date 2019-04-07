@@ -75,7 +75,8 @@ class ArgumentInformation {
             return Collections.singletonList(argument);
         } else if (!isGraphQLList(TypeToken.of(parameter.getParameterizedType()))) {
             //泛参数解析。将输入参数无法识别为 GraphQL Input 的 Java 对象的 Field 参数进行拆解，转换为一组 Input Value
-            return resolveFields(parameter.getType())
+            TypeToken<?> owenType = TypeToken.of(field.getType());
+            return resolveFields(owenType.resolveType(parameter.getParameterizedType()).getRawType())
                     .filter(FieldInformation::isSetter)
                     .filter(this::isGraphQLType)
                     .filter(ele -> ele.isNotIgnore(views))
