@@ -23,7 +23,8 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
-import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static com.ltsoft.graphql.resolver.ResolveUtil.hasGraphQLAnnotation;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
 
 public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> {
 
@@ -48,13 +49,13 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     @Override
     TypeProvider<ObjectTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         ObjectTypeDefinition definition = ObjectTypeDefinition.newObjectTypeDefinition()
-                .comments(resolveComment(cls))
-                .description(resolveDescription(cls))
-                .directives(resolveDirective(cls, resolver))
-                .fieldDefinitions(resolveFieldDefinitions(cls, this::isGraphQLType, resolver))
+                .comments(getComment(cls))
+                .description(getDescription(cls))
+                .directives(getDirective(cls, resolver))
+                .fieldDefinitions(getFieldDefinitions(cls, this::isGraphQLType, resolver))
                 .implementz(resolveInterfaces(cls, resolver))
                 .name(resolveTypeName(cls))
-                .sourceLocation(resolveSourceLocation(cls))
+                .sourceLocation(getSourceLocation(cls))
                 .build();
 
         return new TypeProvider<ObjectTypeDefinition>() {

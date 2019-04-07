@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
 
 public class EnumTypeResolver extends BasicTypeResolver<EnumTypeDefinition> {
 
@@ -38,12 +38,12 @@ public class EnumTypeResolver extends BasicTypeResolver<EnumTypeDefinition> {
                 .collect(Collectors.toList());
 
         EnumTypeDefinition definition = EnumTypeDefinition.newEnumTypeDefinition()
-                .comments(resolveComment(cls))
-                .description(resolveDescription(cls))
-                .directives(resolveDirective(cls, resolver))
+                .comments(getComment(cls))
+                .description(getDescription(cls))
+                .directives(getDirective(cls, resolver))
                 .enumValueDefinitions(definitions)
                 .name(resolveTypeName(cls))
-                .sourceLocation(resolveSourceLocation(cls))
+                .sourceLocation(getSourceLocation(cls))
                 .build();
 
         EnumFieldValueProvider valueProvider = new EnumFieldValueProvider(cls);

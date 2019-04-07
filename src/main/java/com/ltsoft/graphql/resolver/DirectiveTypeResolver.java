@@ -17,7 +17,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveFields;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
 
 public class DirectiveTypeResolver extends BasicTypeResolver<DirectiveDefinition> {
 
@@ -39,12 +40,12 @@ public class DirectiveTypeResolver extends BasicTypeResolver<DirectiveDefinition
     @Override
     TypeProvider<DirectiveDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         DirectiveDefinition definition = DirectiveDefinition.newDirectiveDefinition()
-                .comments(resolveComment(cls))
-                .description(resolveDescription(cls))
+                .comments(getComment(cls))
+                .description(getDescription(cls))
                 .directiveLocations(resolveDirectiveLocation(cls))
                 .inputValueDefinitions(resolveInputValueDefinitions(cls, resolver))
                 .name(resolveTypeName(cls))
-                .sourceLocation(resolveSourceLocation(cls))
+                .sourceLocation(getSourceLocation(cls))
                 .build();
 
         return () -> definition;

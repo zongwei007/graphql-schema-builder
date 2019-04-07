@@ -337,6 +337,14 @@ public class FieldInformation {
                 );
     }
 
+    private TypeName resolveMutationType(GraphQLMutationType annotation, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+        return Optional.of(annotation.value())
+                .map(resolver::apply)
+                .map(TypeProvider::getTypeName)
+                .map(TypeName::new)
+                .orElse(null);
+    }
+
     private List<InputValueDefinition> resolveFieldInputs(Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         Class<?>[] views = Optional.ofNullable(method.getAnnotation(GraphQLView.class))
                 .map(GraphQLView::value)

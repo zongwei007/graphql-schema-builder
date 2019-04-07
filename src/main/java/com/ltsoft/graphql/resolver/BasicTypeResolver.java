@@ -1,8 +1,11 @@
 package com.ltsoft.graphql.resolver;
 
+import com.google.common.base.Splitter;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.TypeProvider;
 import com.ltsoft.graphql.TypeResolver;
+import com.ltsoft.graphql.annotations.GraphQLComment;
+import com.ltsoft.graphql.annotations.GraphQLDescription;
 import com.ltsoft.graphql.annotations.GraphQLTypeExtension;
 import com.ltsoft.graphql.provider.ExtensionTypeProvider;
 import graphql.language.*;
@@ -11,7 +14,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -20,6 +25,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
 
 public abstract class BasicTypeResolver<T extends Definition> implements TypeResolver<T> {
+
+    private static final Splitter LINE_SPLITTER = Splitter.on('\n').trimResults();
 
     abstract TypeProvider<T> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver);
 
@@ -44,11 +51,43 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
         return provider;
     }
 
-    List<Directive> resolveDirective(Class<?> cls, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+    @SuppressWarnings("UnstableApiUsage")
+    List<Comment> getComment(Class<?> cls) {
+        return Optional.ofNullable(cls.getAnnotation(GraphQLComment.class))
+                .map(GraphQLComment::value)
+                .map(LINE_SPLITTER::splitToList)
+                .map(list -> list.stream().map(ele -> new Comment(ele, getSourceLocation(cls))).collect(Collectors.toList()))
+                .orElse(Collections.emptyList());
+    }
+
+    /**
+     * 解析 GraphQL 类型描述
+     *
+     * @param cls 需要解析的类型
+     * @return 类型描述
+     */
+    Description getDescription(Class<?> cls) {
+        return Optional.ofNullable(cls.getAnnotation(GraphQLDescription.class))
+                .map(GraphQLDescription::value)
+                .map(str -> new Description(str, getSourceLocation(cls), str.contains("\n")))
+                .orElse(null);
+    }
+
+    /**
+     * 模拟 SourceLocation，仅记录类名
+     *
+     * @param cls 需要解析的类
+     * @return SourceLocation 信息
+     */
+    SourceLocation getSourceLocation(Class<?> cls) {
+        return new SourceLocation(0, 0, cls.getName());
+    }
+
+    List<Directive> getDirective(Class<?> cls, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         return ResolveUtil.resolveDirective(cls.getAnnotations(), resolver);
     }
 
-    List<FieldDefinition> resolveFieldDefinitions(Class<?> cls, Predicate<FieldInformation> filter, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+    List<FieldDefinition> getFieldDefinitions(Class<?> cls, Predicate<FieldInformation> filter, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         return resolveFields(cls)
                 .filter(filter)
                 .filter(info -> info.test((method, field) -> hasReturnType(method)))

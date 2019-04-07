@@ -2,9 +2,7 @@ package com.ltsoft.graphql.resolver;
 
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.TypeProvider;
-import com.ltsoft.graphql.annotations.GraphQLDefaultValue;
-import com.ltsoft.graphql.annotations.GraphQLNotNull;
-import com.ltsoft.graphql.annotations.GraphQLTypeReference;
+import com.ltsoft.graphql.annotations.*;
 import graphql.language.*;
 
 import java.lang.reflect.Parameter;
@@ -29,6 +27,14 @@ class ArgumentInformation {
         this.views = views;
     }
 
+    public Description getDescription() {
+        return Optional.ofNullable(parameter.getAnnotation(GraphQLDescription.class))
+                .map(GraphQLDescription::value)
+                .map(str -> new Description(str, null, str.contains("\n")))
+                .orElse(null);
+    }
+
+    @SuppressWarnings("WeakerAccess")
     public boolean isNotNull() {
         return Optional.ofNullable(parameter.getAnnotation(GraphQLNotNull.class))
                 .filter(ele -> ele.view().length == 0 || Arrays.stream(views).anyMatch(view -> Arrays.stream(ele.view()).anyMatch(view::isAssignableFrom)))
@@ -36,7 +42,7 @@ class ArgumentInformation {
     }
 
     @SuppressWarnings("UnstableApiUsage")
-    public Type getType(Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+    private Type getType(Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         GraphQLTypeReference typeReference = parameter.getAnnotation(GraphQLTypeReference.class);
         TypeToken<?> paramType = resolveGenericType(field.getType(), parameter.getParameterizedType());
 
@@ -54,7 +60,7 @@ class ArgumentInformation {
     }
 
     @SuppressWarnings("UnstableApiUsage")
-    public List<InputValueDefinition> getDefinitions(Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+    List<InputValueDefinition> getDefinitions(Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         Type inputType = getType(resolver);
 
         if (inputType != null) {
@@ -72,7 +78,7 @@ class ArgumentInformation {
             return resolveFields(parameter.getType())
                     .filter(FieldInformation::isSetter)
                     .filter(this::isGraphQLType)
-                    .filter(this::isNotIgnore)
+                    .filter(ele -> ele.isNotIgnore(views))
                     .map(info -> info.getInputValueDefinition(views, resolver))
                     .collect(Collectors.toList());
         }
@@ -80,12 +86,8 @@ class ArgumentInformation {
         throw new IllegalArgumentException(String.format("Can not resolve GraphQL Input Type witch parameter %s of method %s#%s", parameter.getName(), field.getType().getName(), field.getMethod().getName()));
     }
 
-    private boolean isNotIgnore(FieldInformation info) {
-        return info.isNotIgnore(views);
-    }
-
     private boolean isGraphQLType(FieldInformation info) {
-        return info.test((method, field) -> method.getDeclaringClass().isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLType.class));
+        return info.getDeclaringClass().isAnnotationPresent(GraphQLType.class);
     }
 
     private Value getDefaultValue(Type inputType) {
@@ -102,9 +104,5 @@ class ArgumentInformation {
 
     private String getName() {
         return resolveArgumentName(parameter);
-    }
-
-    private Description getDescription() {
-        return resolveDescription(parameter);
     }
 }

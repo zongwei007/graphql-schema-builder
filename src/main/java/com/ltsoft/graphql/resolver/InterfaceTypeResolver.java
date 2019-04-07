@@ -12,7 +12,8 @@ import java.lang.reflect.Type;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static com.ltsoft.graphql.resolver.ResolveUtil.hasGraphQLAnnotation;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
 
 public class InterfaceTypeResolver extends BasicTypeResolver<InterfaceTypeDefinition> {
 
@@ -38,12 +39,12 @@ public class InterfaceTypeResolver extends BasicTypeResolver<InterfaceTypeDefini
                 .orElse(null);
 
         InterfaceTypeDefinition definition = InterfaceTypeDefinition.newInterfaceTypeDefinition()
-                .comments(resolveComment(cls))
-                .description(resolveDescription(cls))
-                .definitions(resolveFieldDefinitions(cls, this::isInterfaceField, resolver))
-                .directives(resolveDirective(cls, resolver))
+                .comments(getComment(cls))
+                .description(getDescription(cls))
+                .definitions(getFieldDefinitions(cls, this::isInterfaceField, resolver))
+                .directives(getDirective(cls, resolver))
                 .name(resolveTypeName(cls))
-                .sourceLocation(resolveSourceLocation(cls))
+                .sourceLocation(getSourceLocation(cls))
                 .build();
 
         return new InterfaceTypeProvider(definition, typeResolver);

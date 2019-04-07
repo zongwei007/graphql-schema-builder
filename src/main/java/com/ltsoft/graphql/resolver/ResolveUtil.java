@@ -1,6 +1,5 @@
 package com.ltsoft.graphql.resolver;
 
-import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.HashBiMap;
 import com.google.common.reflect.Invokable;
@@ -119,41 +118,6 @@ public final class ResolveUtil {
                 .orElse(parameter.getName());
     }
 
-    /**
-     * 解析 GraphQL 类型描述
-     *
-     * @param cls 需要解析的类型
-     * @return 类型描述
-     */
-    @SuppressWarnings("WeakerAccess")
-    public static Description resolveDescription(Class<?> cls) {
-        return Optional.ofNullable(cls.getAnnotation(GraphQLDescription.class))
-                .map(GraphQLDescription::value)
-                .map(str -> new Description(str, resolveSourceLocation(cls), str.contains("\n")))
-                .orElse(null);
-    }
-
-    /**
-     * 解析 GraphQL 参数描述
-     *
-     * @param parameter 所需解析的参数
-     * @return 参数描述
-     */
-    static Description resolveDescription(Parameter parameter) {
-        return Optional.ofNullable(parameter.getAnnotation(GraphQLDescription.class))
-                .map(GraphQLDescription::value)
-                .map(str -> new Description(str, null, str.contains("\n")))
-                .orElse(null);
-    }
-
-    static TypeName resolveMutationType(GraphQLMutationType annotation, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
-        return Optional.of(annotation.value())
-                .map(resolver::apply)
-                .map(TypeProvider::getTypeName)
-                .map(TypeName::new)
-                .orElse(null);
-    }
-
     static TypeName resolveTypeReference(GraphQLTypeReference annotation, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         String name = Optional.of(annotation.type())
                 .filter(type -> !Object.class.equals(type))
@@ -195,27 +159,6 @@ public final class ResolveUtil {
         String fieldName = METHOD_NAME_PREFIX.matcher(name).replaceFirst("$2");
 
         return fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
-    }
-
-    private static final Splitter LINE_SPLITTER = Splitter.on('\n').trimResults();
-
-    @SuppressWarnings("UnstableApiUsage")
-    static List<Comment> resolveComment(Class<?> cls) {
-        return Optional.ofNullable(cls.getAnnotation(GraphQLComment.class))
-                .map(GraphQLComment::value)
-                .map(LINE_SPLITTER::splitToList)
-                .map(list -> list.stream().map(ele -> new Comment(ele, resolveSourceLocation(cls))).collect(Collectors.toList()))
-                .orElse(Collections.emptyList());
-    }
-
-    /**
-     * 模拟 SourceLocation，仅记录类名
-     *
-     * @param cls 需要解析的类
-     * @return SourceLocation 信息
-     */
-    static SourceLocation resolveSourceLocation(Class<?> cls) {
-        return new SourceLocation(0, 0, cls.getName());
     }
 
     /**

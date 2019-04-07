@@ -25,12 +25,12 @@ public class InputObjectTypeResolver extends BasicTypeResolver<InputObjectTypeDe
     @Override
     TypeProvider<InputObjectTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         InputObjectTypeDefinition definition = InputObjectTypeDefinition.newInputObjectDefinition()
-                .comments(resolveComment(cls))
-                .description(resolveDescription(cls))
-                .directives(resolveDirective(cls, resolver))
+                .comments(getComment(cls))
+                .description(getDescription(cls))
+                .directives(getDirective(cls, resolver))
                 .inputValueDefinitions(resolveInputValueDefinitions(cls, resolver))
                 .name(resolveTypeName(cls))
-                .sourceLocation(resolveSourceLocation(cls))
+                .sourceLocation(getSourceLocation(cls))
                 .build();
 
         return () -> definition;

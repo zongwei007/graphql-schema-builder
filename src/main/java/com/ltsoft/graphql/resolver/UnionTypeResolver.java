@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
 
 public class UnionTypeResolver extends BasicTypeResolver<UnionTypeDefinition> {
 
@@ -48,12 +48,12 @@ public class UnionTypeResolver extends BasicTypeResolver<UnionTypeDefinition> {
                 .collect(Collectors.toList());
 
         UnionTypeDefinition definition = UnionTypeDefinition.newUnionTypeDefinition()
-                .comments(resolveComment(cls))
-                .description(resolveDescription(cls))
-                .directives(resolveDirective(cls, resolver))
+                .comments(getComment(cls))
+                .description(getDescription(cls))
+                .directives(getDirective(cls, resolver))
                 .memberTypes(possibleTypes)
                 .name(resolveTypeName(cls))
-                .sourceLocation(resolveSourceLocation(cls))
+                .sourceLocation(getSourceLocation(cls))
                 .build();
 
         return new UnionTypeProvider(definition, typeResolver);
