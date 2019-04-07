@@ -332,7 +332,7 @@ public class FieldInformation {
                 .map(TypeToken::getRawType)
                 .flatMap(cls ->
                         Arrays.stream(cls.getMethods())
-                                .filter(ele -> getName().equals(simplifyName(ele.getName())))
+                                .filter(ele -> ele.getName().equals(method.getName()))
                                 .filter(ele -> Arrays.equals(ele.getParameterTypes(), method.getParameterTypes()))
                 );
     }
