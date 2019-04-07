@@ -1,8 +1,8 @@
 package com.ltsoft.graphql.impl;
 
 import com.google.common.collect.ImmutableMap;
-import com.ltsoft.graphql.example.ArgumentService;
-import com.ltsoft.graphql.example.MutationObject;
+import com.ltsoft.graphql.example.object.ArgumentService;
+import com.ltsoft.graphql.example.object.MutationObject;
 import graphql.schema.DataFetchingEnvironment;
 import org.junit.Test;
 

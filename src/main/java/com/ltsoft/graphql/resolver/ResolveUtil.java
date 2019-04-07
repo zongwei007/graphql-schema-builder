@@ -1,38 +1,37 @@
 package com.ltsoft.graphql.resolver;
 
-import com.google.common.base.CaseFormat;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.HashBiMap;
 import com.google.common.reflect.Invokable;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.GraphQLDirectiveBuilder;
+import com.ltsoft.graphql.TypeProvider;
 import com.ltsoft.graphql.annotations.*;
 import com.ltsoft.graphql.impl.DefaultDirectiveBuilder;
-import graphql.introspection.Introspection;
+import com.ltsoft.graphql.scalars.ScalarTypeRepository;
 import graphql.language.Type;
 import graphql.language.*;
 import graphql.schema.GraphQLScalarType;
 import graphql.schema.idl.ScalarInfo;
+import graphql.schema.idl.TypeInfo;
 
 import java.lang.annotation.Annotation;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 public final class ResolveUtil {
+
+    public static final SourceLocation EMPTY_SOURCE_LOCATION = new SourceLocation(0, 0);
 
     private static final Pattern METHOD_NAME_PREFIX = Pattern.compile("^(is|get|set)([A-Z])");
 
@@ -197,81 +196,19 @@ public final class ResolveUtil {
                 .orElse(null);
     }
 
-    /**
-     * 判断 GraphQLIgnore 注解是否生效
-     *
-     * @param method 当前方法
-     * @param field  映射字段
-     * @param views  当前 GraphQLView 上下文
-     * @return 是否已忽略
-     */
-    static boolean isNotIgnore(Method method, Field field, Class<?>[] views) {
-        GraphQLIgnore ignore = null;
-        if (field != null) {
-            ignore = field.getAnnotation(GraphQLIgnore.class);
-        }
-
-        if (ignore == null && method != null) {
-            ignore = method.getAnnotation(GraphQLIgnore.class);
-        }
-
-        return !Optional.ofNullable(ignore)
-                .filter(ele -> ele.view().length == 0 || Arrays.stream(views).anyMatch(view -> Arrays.stream(ele.view()).anyMatch(view::isAssignableFrom)))
-                .isPresent();
-    }
-
-    /**
-     * 判断 GraphQLIgnore 注解是否生效。如果 GraphQLIgnore 声明了 View 信息，将判定为无效。
-     *
-     * @param method 当前方法
-     * @param field  映射字段
-     * @return 是否已忽略
-     */
-    static boolean isNotIgnore(Method method, Field field) {
-        return isNotIgnore(method, field, new Class[0]);
-    }
-
-    /**
-     * 判断 GraphQLNotNull 注解是否生效
-     *
-     * @param notNull 注解声明
-     * @param views   当前 GraphQLView 上下文
-     * @return 是否不为空
-     */
-    static boolean isNotNull(GraphQLNotNull notNull, Class<?>[] views) {
-        return Optional.ofNullable(notNull)
-                .filter(ele -> ele.view().length == 0 || Arrays.stream(views).anyMatch(view -> Arrays.stream(ele.view()).anyMatch(view::isAssignableFrom)))
-                .isPresent();
-    }
-
-    /**
-     * 解析实现的 GraphQL Interface
-     *
-     * @param cls 需要解析的类
-     * @return GraphQL Interface 数组
-     */
-    @SuppressWarnings("UnstableApiUsage")
-    static List<Type> resolveInterfaces(Class<?> cls) {
-        return TypeToken.of(cls).getTypes()
-                .interfaces()
-                .stream()
-                .map(TypeToken::getRawType)
-                .filter(ele -> ele.isAnnotationPresent(GraphQLInterface.class))
-                .map(ResolveUtil::resolveType)
-                .collect(Collectors.toList());
-    }
-
-    static TypeName resolveMutationType(GraphQLMutationType annotation) {
+    static TypeName resolveMutationType(GraphQLMutationType annotation, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         return Optional.of(annotation.value())
-                .map(ResolveUtil::resolveTypeName)
+                .map(resolver::apply)
+                .map(TypeProvider::getTypeName)
                 .map(TypeName::new)
                 .orElse(null);
     }
 
-    static TypeName resolveTypeReference(GraphQLTypeReference annotation) {
+    static TypeName resolveTypeReference(GraphQLTypeReference annotation, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         String name = Optional.of(annotation.type())
                 .filter(type -> !Object.class.equals(type))
-                .map(ResolveUtil::resolveTypeName)
+                .map(resolver::apply)
+                .map(TypeProvider::getTypeName)
                 .orElse(annotation.name());
 
         return Strings.isNullOrEmpty(name) ? null : new TypeName(name);
@@ -305,7 +242,9 @@ public final class ResolveUtil {
      */
     @SuppressWarnings("WeakerAccess")
     public static String simplifyName(String name) {
-        return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, METHOD_NAME_PREFIX.matcher(name).replaceFirst("$2"));
+        String fieldName = METHOD_NAME_PREFIX.matcher(name).replaceFirst("$2");
+
+        return fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
     }
 
     private static final Splitter LINE_SPLITTER = Splitter.on('\n').trimResults();
@@ -375,6 +314,7 @@ public final class ResolveUtil {
      * @param cls             Java 类型
      * @param annotationClass 注解类型
      */
+    @SuppressWarnings("WeakerAccess")
     public static boolean hasGraphQLAnnotation(Class<?> cls, Class<? extends Annotation> annotationClass) {
         boolean isExtensionType = cls.isAnnotationPresent(GraphQLTypeExtension.class) && cls.getAnnotation(GraphQLTypeExtension.class).value().isAnnotationPresent(annotationClass);
 
@@ -394,7 +334,8 @@ public final class ResolveUtil {
      * @param name 类型名称
      * @return GraphQL Scalar 类型
      */
-    static Optional<GraphQLScalarType> getStandardScalarType(String name) {
+    @SuppressWarnings("WeakerAccess")
+    public static Optional<GraphQLScalarType> getStandardScalarType(String name) {
         return Optional.ofNullable(STANDARD_SCALAR_MAP.get(name));
     }
 
@@ -415,7 +356,7 @@ public final class ResolveUtil {
                 || cls.isAnnotationPresent(GraphQLInput.class)
                 || cls.isAnnotationPresent(GraphQLTypeExtension.class)
                 || cls.isAnnotationPresent(GraphQLUnion.class)
-                || cls.isAnnotationPresent(GraphQLDirectiveLocations.class);
+                || cls.isAnnotationPresent(GraphQLDirective.class);
     }
 
     /**
@@ -455,30 +396,6 @@ public final class ResolveUtil {
         return result;
     }
 
-    private static Map<ElementType, Introspection.DirectiveLocation> LOCATION_MAP = new HashMap<>();
-
-    static {
-        LOCATION_MAP.put(ElementType.TYPE, Introspection.DirectiveLocation.OBJECT);
-        LOCATION_MAP.put(ElementType.FIELD, Introspection.DirectiveLocation.FIELD_DEFINITION);
-        LOCATION_MAP.put(ElementType.METHOD, Introspection.DirectiveLocation.FIELD_DEFINITION);
-        LOCATION_MAP.put(ElementType.PARAMETER, Introspection.DirectiveLocation.ARGUMENT_DEFINITION);
-    }
-
-    static List<DirectiveLocation> resolveDirectiveLocation(Class<?> cls) {
-        Stream<Introspection.DirectiveLocation> locationStream = Stream.of();
-
-        if (cls.isAnnotationPresent(GraphQLDirectiveLocations.class)) {
-            locationStream = Arrays.stream(cls.getAnnotation(GraphQLDirectiveLocations.class).value());
-        } else if (cls.isAnnotationPresent(Target.class)) {
-            locationStream = Arrays.stream(cls.getAnnotation(Target.class).value())
-                    .map(ele -> LOCATION_MAP.get(ele))
-                    .filter(Objects::nonNull);
-        }
-
-        return locationStream.map(ele -> new DirectiveLocation(ele.name())).collect(Collectors.toList());
-    }
-
-
     private static final List<GraphQLDirectiveBuilder> DIRECTIVE_RESOLVERS = new ArrayList<>();
 
     static {
@@ -511,93 +428,40 @@ public final class ResolveUtil {
                 .collect(Collectors.toList());
     }
 
-    static List<Directive> resolveDirective(Class<?> cls) {
-        return resolveDirective(cls.getAnnotations());
-    }
-
-    static List<Directive> resolveDirective(Method method, Field field) {
-
-        Stream<Annotation> fieldAnnotations = Optional.ofNullable(field)
-                .map(ele -> Arrays.stream(ele.getAnnotations()))
-                .orElse(Stream.of());
-
-        Stream<Annotation> methodAnnotations = Optional.ofNullable(method)
-                .map(ele -> Arrays.stream(ele.getAnnotations()))
-                .orElse(Stream.of());
-
-        return Stream.concat(fieldAnnotations, methodAnnotations)
-                .map(ResolveUtil::resolveDirective)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
     static List<Directive> resolveDirective(Parameter parameter) {
         return resolveDirective(parameter.getAnnotations());
     }
 
-    /**
-     * 解析字段注解
-     *
-     * @param method 解析方法
-     * @param field  关联字段
-     * @param type   注解类型
-     * @param <T>    注解类型
-     * @return 注解信息
-     */
-    static <T extends Annotation> T resolveFieldAnnotation(Method method, Field field, Class<T> type) {
-        return Optional.ofNullable(field)
-                .map(ele -> ele.getAnnotation(type))
-                .orElseGet(() ->
-                        Optional.ofNullable(method)
-                                .map(ele -> ele.getAnnotation(type))
-                                .orElse(null)
-                );
+    static Stream<FieldInformation> resolveFields(Class<?> cls) {
+        Stream<FieldInformation> ownFields = Arrays.stream(cls.getMethods())
+                .filter(ResolveUtil::isInvokable)
+                .map(method -> new FieldInformation(cls, method))
+                .filter(FieldInformation::isField);
+
+        Stream<FieldInformation> extensions = resolveExtensionFields(cls.getAnnotation(GraphQLFieldExtension.class));
+
+        return Stream.concat(ownFields, extensions);
     }
 
-    /**
-     * 解析 Object 所有的扩展类型
-     *
-     * @param typeToken Object 类型信息
-     * @param filter    类型过滤器
-     * @return 所有扩展类型信息
-     */
-    @SuppressWarnings("UnstableApiUsage")
-    static Stream<Class<?>> resolveClassExtensions(TypeToken<?> typeToken, Predicate<Class<?>> filter) {
-        Stream<? extends Class<?>> withParents = typeToken.getTypes().stream()
-                .map(TypeToken::getRawType)
-                .filter(filter);
+    private static Stream<FieldInformation> resolveExtensionFields(GraphQLFieldExtension annotation) {
+        if (annotation == null) {
+            return Stream.of();
+        }
 
-        Class<?>[] fieldExtensions = Optional.ofNullable(typeToken.getRawType().getAnnotation(GraphQLFieldExtension.class))
-                .map(GraphQLFieldExtension::value)
-                .orElse(new Class[0]);
-
-        return Stream.concat(withParents, Arrays.stream(fieldExtensions));
+        return Arrays.stream(annotation.value())
+                .filter(cls -> Modifier.isAbstract(cls.getModifiers())) //字段扩展只支持在抽象类上声明
+                .flatMap(ResolveUtil::resolveFields);
     }
 
-    static <T> Stream<T> resolveFieldStream(Class<?> currentCls, BiPredicate<Method, Field> filter, BiFunction<Method, Field, T> consumer) {
-        Method[] methods = currentCls.getDeclaredMethods();
-        Field[] fields = currentCls.getDeclaredFields();
-        Map<String, Field> fieldNameMap = Arrays.stream(fields)
-                .collect(Collectors.toMap(Field::getName, Function.identity()));
+    static boolean hasReturnType(Method method) {
+        return !void.class.equals(method.getReturnType()) && !Void.class.equals(method.getReturnType());
+    }
 
-        AtomicInteger index = new AtomicInteger();
+    private static boolean isInvokable(Method method) {
+        //noinspection UnstableApiUsage
+        Invokable<?, Object> invokable = Invokable.from(method);
 
-        return Stream.generate(() -> {
-            Method method = methods[index.getAndIncrement()];
-            Field field = fieldNameMap.get(simplifyName(method.getName()));
-            //noinspection UnstableApiUsage
-            Invokable<?, Object> invokable = Invokable.from(method);
-
-            if (invokable.isStatic() || !invokable.isPublic() || method.isBridge()) {
-                return null;
-            }
-
-            if (filter.test(method, field)) {
-                return consumer.apply(method, field);
-            }
-
-            return null;
-        }).limit(methods.length).filter(Objects::nonNull);
+        return !invokable.isStatic() && invokable.isPublic() && !method.isBridge();
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -605,48 +469,95 @@ public final class ResolveUtil {
         return typeToken.isArray() || typeToken.isSubtypeOf(Collection.class);
     }
 
-    /**
-     * 按 {@link GraphQLFieldFilter} 解析字段过滤断言。
-     *
-     * @param resolvingCls 当前解析类
-     * @param currentCls   当前处理类
-     * @param predicates   其它断言，按 {@link BiPredicate#and(BiPredicate)} 进行合并。
-     * @return 合并后的断言
-     */
-    @SafeVarargs
-    static BiPredicate<Method, Field> resolveFieldFilter(Class<?> resolvingCls, Class<?> currentCls, BiPredicate<Method, Field>... predicates) {
-        Class<? extends BiPredicate<Method, Field>> predicateType = Optional.ofNullable(resolvingCls.getAnnotation(GraphQLFieldFilter.class))
-                .map(GraphQLFieldFilter::value)
+    static Value resolveInputDefaultValue(GraphQLDefaultValue defaultValue, Type inputType, Boolean isEnum) {
+        return Optional.ofNullable(defaultValue)
+                .map(GraphQLDefaultValue::value)
+                .map(str -> {
+                    if (isEnum) {
+                        return new EnumValue(str);
+                    }
+
+                    return Optional.of(TypeInfo.typeInfo(inputType).getName())
+                            .map(name -> ScalarTypeRepository.getInstance().getScalarType(name)
+                                    .orElseGet(() -> getStandardScalarType(name).orElse(null)))
+                            .map(scalarType -> AstValueHelper.astFromValue(str, scalarType))
+                            .orElse(null);
+                })
                 .orElse(null);
+    }
 
-        BiPredicate<Method, Field> predicate = (method, field) -> true;
+    static Directive resolveDirective(Annotation annotation, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+        Directive directive = resolveDirective(annotation);
 
-        if (predicateType != null) {
-            try {
-                predicate = predicateType.getConstructor().newInstance();
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                throw new IllegalArgumentException(String.format("Can not construct field filter '%s'", predicateType.getName()), e);
+        if (directive != null) {
+            //仅用于注册注解类型，不需要处理返回值
+            resolver.apply(annotation.annotationType());
+        }
+
+        return directive;
+    }
+
+    static List<Directive> resolveDirective(Annotation[] annotations, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+        return Arrays.stream(annotations)
+                .map(ele -> resolveDirective(ele, resolver))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    static Type resolveGraphQLType(TypeToken<?> typeToken, Function<java.lang.reflect.Type, TypeProvider<?>> resolver, Boolean isNotNull) {
+        boolean isArray = isGraphQLList(typeToken);
+        TypeToken<?> unwrapped = typeToken;
+
+        if (isArray) {
+            unwrapped = unwrapListType(typeToken);
+        }
+
+        TypeProvider<?> provider = resolver.apply(unwrapped.getType());
+        Type result = new TypeName(provider.getTypeName());
+
+        //重新包装
+        if (isArray) {
+            result = new ListType(result);
+        }
+
+        if (isNotNull) {
+            result = new NonNullType(result);
+        }
+
+        return result;
+    }
+
+    @SuppressWarnings({"UnstableApiUsage", "WeakerAccess"})
+    public static TypeToken<?> unwrapListType(TypeToken<?> typeToken) {
+        if (isGraphQLList(typeToken)) {
+            if (typeToken.getComponentType() != null) {
+                return typeToken.getComponentType();
+            } else {
+                TypeVariable<? extends Class<?>>[] typeParameters = typeToken.getRawType().getTypeParameters();
+
+                checkState(typeParameters.length == 1);
+
+                return typeToken.resolveType(typeParameters[0]);
             }
+        } else {
+            return typeToken;
         }
+    }
 
-        if (Arrays.stream(currentCls.getDeclaredMethods()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class)) || Arrays.stream(currentCls.getDeclaredFields()).anyMatch(ele -> ele.isAnnotationPresent(GraphQLField.class))) {
-            predicate = predicate.and(((method, field) -> {
-                if (field != null) {
-                    return field.isAnnotationPresent(GraphQLField.class);
-                }
+    static boolean isGraphQLEnumType(Class<?> type) {
+        return type.isEnum() && hasGraphQLAnnotation(type, GraphQLType.class);
+    }
 
-                if (method != null) {
-                    return method.isAnnotationPresent(GraphQLField.class);
-                }
+    static boolean isGraphQLObjectLikeType(Class<?> cls) {
+        return hasGraphQLAnnotation(cls, GraphQLType.class) || hasGraphQLAnnotation(cls, GraphQLInterface.class) || hasGraphQLAnnotation(cls, GraphQLInput.class);
+    }
 
-                return false;
-            }));
-        }
+    static boolean isGraphQLInputType(Class<?> paramType) {
+        return isGraphQLEnumType(paramType) || hasGraphQLAnnotation(paramType, GraphQLInput.class) || !isGraphQLObjectLikeType(paramType);
+    }
 
-        for (BiPredicate<Method, Field> item : predicates) {
-            predicate = predicate.and(item);
-        }
-
-        return predicate;
+    static boolean isGraphQLExtensionType(Class<?> cls) {
+        return cls.isAnnotationPresent(GraphQLTypeExtension.class);
     }
 }

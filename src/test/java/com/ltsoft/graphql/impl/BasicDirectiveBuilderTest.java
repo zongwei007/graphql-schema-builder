@@ -1,6 +1,6 @@
 package com.ltsoft.graphql.impl;
 
-import com.ltsoft.graphql.example.EnumObject;
+import com.ltsoft.graphql.example.enumeration.EnumObject;
 import graphql.language.*;
 import org.junit.Test;
 

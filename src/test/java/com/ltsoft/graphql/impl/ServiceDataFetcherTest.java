@@ -1,9 +1,8 @@
 package com.ltsoft.graphql.impl;
 
 import com.ltsoft.graphql.ArgumentProvider;
-import com.ltsoft.graphql.example.MutationInputObject;
-import com.ltsoft.graphql.example.MutationObject;
-import com.ltsoft.graphql.example.MutationService;
+import com.ltsoft.graphql.example.object.MutationObject;
+import com.ltsoft.graphql.example.object.MutationService;
 import graphql.schema.DataFetchingEnvironment;
 import org.junit.Test;
 

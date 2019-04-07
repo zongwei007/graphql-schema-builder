@@ -1,8 +1,10 @@
 package com.ltsoft.graphql;
 
-import com.ltsoft.graphql.example.*;
+import com.ltsoft.graphql.example.RootSchemaService;
+import com.ltsoft.graphql.example.custom.CustomTypeResolver;
+import com.ltsoft.graphql.example.scalar.HelloObject;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
-import com.ltsoft.graphql.resolver.ResolveTestUtil;
+import com.ltsoft.graphql.provider.EnumTypeProvider;
 import graphql.language.EnumTypeDefinition;
 import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLSchema;
@@ -19,7 +21,7 @@ public class GraphQLSchemaBuilderTest {
         GraphQLSchema schema = new GraphQLSchemaBuilder()
                 .addScalar(HelloObject.HelloObjectScalar, HelloObject.class)
                 .instanceFactory(instanceFactory)
-                .addType(RootSchemaService.class, RootQueryService.class, RootMutationService.class)
+                .addType(RootSchemaService.class)
                 .build();
 
         assertThat(schema.getObjectType("Query")).isNotNull();
@@ -31,14 +33,19 @@ public class GraphQLSchemaBuilderTest {
     @Test
     public void testWithPackage() {
         InstanceFactory instanceFactory = new DefaultInstanceFactory();
-        EnumTypeDefinition customEnum = ResolveTestUtil.buildCustomEnumDefinition();
+        TypeProvider<EnumTypeDefinition> customEnumProvider = EnumTypeProvider.newEnumTypeProvider()
+                .name("CustomEnum")
+                .description("A Custom Enum")
+                .enumValues("customFirst", 1)
+                .enumValues("customSecond", 2)
+                .build();
 
         GraphQLSchema schema = new GraphQLSchemaBuilder()
                 .addScalar(HelloObject.HelloObjectScalar, HelloObject.class)
                 .instanceFactory(instanceFactory)
                 .addPackage("com.ltsoft.graphql.example")
-                .typeResolver(new ObjectForTypeResolver.CustomTypeResolver())
-                .document(document -> document.definition(customEnum))
+                .typeProvider(customEnumProvider)
+                .typeResolver(new CustomTypeResolver())
                 .build();
 
         assertThat(schema.getObjectType("Query")).isNotNull();

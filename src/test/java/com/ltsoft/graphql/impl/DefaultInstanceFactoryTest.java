@@ -1,7 +1,7 @@
 package com.ltsoft.graphql.impl;
 
-import com.ltsoft.graphql.example.MutationService;
 import com.ltsoft.graphql.example.NotConstructor;
+import com.ltsoft.graphql.example.object.MutationService;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

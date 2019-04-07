@@ -1,6 +1,6 @@
 package com.ltsoft.graphql.scalars;
 
-import com.ltsoft.graphql.example.HelloObject;
+import com.ltsoft.graphql.example.scalar.HelloObject;
 import graphql.Scalars;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -20,7 +20,7 @@ public class ScalarTypeRepositoryTest {
 
     @Test
     public void testRegister() {
-        ScalarTypeRepository repo = new ScalarTypeRepository();
+        ScalarTypeRepository repo = ScalarTypeRepository.getInstance();
         //noinspection unchecked
         LogAssert expect = TestLoggers.sys().expect(
                 "com.ltsoft.graphql",
@@ -39,7 +39,7 @@ public class ScalarTypeRepositoryTest {
 
     @Test
     public void testGetScalarType() {
-        ScalarTypeRepository repo = new ScalarTypeRepository();
+        ScalarTypeRepository repo = ScalarTypeRepository.getInstance();
 
         assertThat(repo.getScalarType("Instant"))
                 .isPresent()
@@ -48,15 +48,8 @@ public class ScalarTypeRepositoryTest {
     }
 
     @Test
-    public void testAllExtensionTypes() {
-        ScalarTypeRepository repo = new ScalarTypeRepository();
-
-        assertThat(repo.allExtensionTypes()).isNotEmpty();
-    }
-
-    @Test
     public void testFindMappingScalarType() {
-        ScalarTypeRepository repo = new ScalarTypeRepository();
+        ScalarTypeRepository repo = ScalarTypeRepository.getInstance();
 
         assertThat(repo.findMappingScalarType(String.class)).contains(Scalars.GraphQLString);
         assertThat(repo.findMappingScalarType(UUID.class)).contains(ScalarTypes.GraphQLUUID);

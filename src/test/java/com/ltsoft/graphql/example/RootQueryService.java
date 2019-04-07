@@ -1,6 +1,7 @@
 package com.ltsoft.graphql.example;
 
 import com.ltsoft.graphql.annotations.*;
+import com.ltsoft.graphql.example.scalar.HelloObject;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLFieldDefinition;
 

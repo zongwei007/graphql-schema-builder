@@ -1,0 +1,18 @@
+interface NormalInterface {
+  info: String
+}
+
+type NormalInterfaceImpl implements NormalInterface {
+  data: String
+  info: String
+  "A foobar field"
+  items: [String]
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}

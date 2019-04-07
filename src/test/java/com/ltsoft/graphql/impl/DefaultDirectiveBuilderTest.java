@@ -1,8 +1,8 @@
 package com.ltsoft.graphql.impl;
 
 import com.ltsoft.graphql.annotations.GraphQLDeprecate;
-import com.ltsoft.graphql.example.NormalDirective;
-import com.ltsoft.graphql.example.NormalDirectiveExample;
+import com.ltsoft.graphql.example.directive.NormalDirective;
+import com.ltsoft.graphql.example.directive.NormalDirectiveExample;
 import graphql.language.Directive;
 import org.junit.Test;
 

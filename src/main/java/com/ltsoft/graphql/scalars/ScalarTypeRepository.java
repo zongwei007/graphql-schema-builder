@@ -5,7 +5,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import com.google.common.collect.ImmutableSet;
 import graphql.Scalars;
 import graphql.language.ScalarTypeDefinition;
 import graphql.scalars.ExtendedScalars;
@@ -17,7 +16,10 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.time.*;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 public final class ScalarTypeRepository {
 
@@ -35,6 +37,14 @@ public final class ScalarTypeRepository {
         PRIMITIVE_TYPE_MAP.put(double.class, Double.class);
     }
 
+    private static class SingletonHolder {
+        private static final ScalarTypeRepository INSTANCE = new ScalarTypeRepository();
+    }
+
+    public static ScalarTypeRepository getInstance() {
+        return SingletonHolder.INSTANCE;
+    }
+
     private LoadingCache<Class<?>, Optional<GraphQLScalarType>> MAPPING_CACHE = CacheBuilder.newBuilder()
             .build(new ClassGraphQLScalarTypeCacheLoader());
 
@@ -42,7 +52,7 @@ public final class ScalarTypeRepository {
     private Map<String, ScalarTypeDefinition> typeDefinitionMap = new HashMap<>();
     private BiMap<Class<?>, GraphQLScalarType> javaTypeMap = HashBiMap.create();
 
-    public ScalarTypeRepository() {
+    private ScalarTypeRepository() {
         register(Map.class, ExtendedScalars.Object);
         register(LocalDate.class, ExtendedScalars.Date);
         register(OffsetDateTime.class, ExtendedScalars.DateTime);
@@ -90,6 +100,8 @@ public final class ScalarTypeRepository {
     public ScalarTypeRepository register(Class<?> sourceType, GraphQLScalarType scalarType) {
         mapping(sourceType, scalarType);
         register(scalarType);
+
+        MAPPING_CACHE.invalidate(sourceType);
         return this;
     }
 
@@ -97,20 +109,8 @@ public final class ScalarTypeRepository {
         return Optional.ofNullable(scalarTypeMap.get(name));
     }
 
-    public Optional<ScalarTypeDefinition> getScalarTypeDefinition(String name) {
-        return Optional.ofNullable(typeDefinitionMap.get(name));
-    }
-
     public Optional<GraphQLScalarType> findMappingScalarType(Class<?> cls) {
         return MAPPING_CACHE.getUnchecked(cls.isPrimitive() ? PRIMITIVE_TYPE_MAP.get(cls) : cls);
-    }
-
-    public Set<GraphQLScalarType> allExtensionTypes() {
-        return ImmutableSet.copyOf(scalarTypeMap.values());
-    }
-
-    public Set<ScalarTypeDefinition> allExtensionTypeDefinitions() {
-        return ImmutableSet.copyOf(typeDefinitionMap.values());
     }
 
     private class ClassGraphQLScalarTypeCacheLoader extends CacheLoader<Class<?>, Optional<GraphQLScalarType>> {

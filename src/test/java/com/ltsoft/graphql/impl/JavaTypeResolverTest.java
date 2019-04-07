@@ -1,6 +1,6 @@
 package com.ltsoft.graphql.impl;
 
-import com.ltsoft.graphql.example.NormalObject;
+import com.ltsoft.graphql.example.object.NormalObject;
 import graphql.TypeResolutionEnvironment;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLSchema;

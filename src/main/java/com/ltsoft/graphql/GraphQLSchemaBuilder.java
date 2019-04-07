@@ -3,6 +3,7 @@ package com.ltsoft.graphql;
 import com.google.common.reflect.ClassPath;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import com.ltsoft.graphql.resolver.ResolveUtil;
+import com.ltsoft.graphql.resolver.TypeProviderFactory;
 import com.ltsoft.graphql.visibility.FieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.RuntimeFieldVisibilityFilter;
 import com.ltsoft.graphql.visibility.TypeVisibilityFilter;
@@ -107,40 +108,34 @@ public final class GraphQLSchemaBuilder {
     }
 
     public GraphQLSchema build() {
-        GraphQLDocumentBuilder documentBuilder = new GraphQLDocumentBuilder();
-        GraphQLRuntimeWiringBuilder runtimeWiringBuilder = new GraphQLRuntimeWiringBuilder();
+        Document.Builder documentBuilder = Document.newDocument();
+        RuntimeWiring.Builder runtimeWiringBuilder = RuntimeWiring.newRuntimeWiring();
 
+        TypeProviderFactory factory = new TypeProviderFactory();
+        factory.setArgumentFactories(argumentProviderFactories);
+        factory.setInstanceFactory(instanceFactory);
+
+        scalarTypeMap.forEach(factory::addScalar);
+        typeResolvers.forEach(factory::addTypeResolvers);
         Stream.concat(types.stream(), packageNames.stream().flatMap(this::searchPackage))
                 .distinct()
-                .forEach(cls -> {
-                    documentBuilder.withType(cls);
-                    runtimeWiringBuilder.withType(cls);
-                });
+                .forEach(factory::addClass);
 
-        scalarTypeMap.forEach(documentBuilder::addScalar);
-        typeResolvers.forEach(documentBuilder::withTypeResolver);
+        Stream.concat(factory.getProviders(), typeProviders.stream()).forEach(provider -> {
+            provider.getDefinitionOperator().apply(documentBuilder);
+            provider.getWiringOperator().apply(runtimeWiringBuilder);
+        });
 
-        documentBuilder.getAllExtensionScalars().forEach(runtimeWiringBuilder::withScalar);
-
-        Document.Builder graphqlDocumentBuilder = documentBuilder.builder();
-        typeProviders.forEach(provider -> graphqlDocumentBuilder.definition(provider.getDefinition()));
-
-        Document document = combineUnaryOperator(documentProcessors).apply(graphqlDocumentBuilder).build();
+        Document document = combineUnaryOperator(documentProcessors).apply(documentBuilder).build();
         TypeDefinitionRegistry typeDefinitionRegistry = new SchemaParser().buildRegistry(document);
 
         for (TypeDefinitionRegistry registry : typeDefinitionRegistries) {
             typeDefinitionRegistry = typeDefinitionRegistry.merge(registry);
         }
 
-        runtimeWiringBuilder
-                .setArgumentFactories(argumentProviderFactories)
-                .setInstanceFactory(instanceFactory);
+        runtimeWiringBuilder.fieldVisibility(new RuntimeFieldVisibilityFilter(typeFilters, fieldFilters));
 
-        RuntimeWiring.Builder graphqlWiringBuilder = runtimeWiringBuilder.builder();
-        graphqlWiringBuilder.fieldVisibility(new RuntimeFieldVisibilityFilter(typeFilters, fieldFilters));
-        typeProviders.forEach(provider -> provider.getWiringOperator().apply(graphqlWiringBuilder));
-
-        RuntimeWiring runtimeWiring = combineUnaryOperator(runtimeWiringProcessors).apply(graphqlWiringBuilder).build();
+        RuntimeWiring runtimeWiring = combineUnaryOperator(runtimeWiringProcessors).apply(runtimeWiringBuilder).build();
 
         return new SchemaGenerator().makeExecutableSchema(options, typeDefinitionRegistry, runtimeWiring);
     }
