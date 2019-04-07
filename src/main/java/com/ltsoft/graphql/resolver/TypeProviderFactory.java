@@ -82,15 +82,21 @@ public final class TypeProviderFactory {
     }
 
     private TypeProvider<?> processType(Type javaType) {
-        return providerCache.computeIfAbsent(javaType, key ->
-                typeResolvers.stream()
-                        .filter(ele -> ele.isSupport(key))
-                        .findFirst()
-                        .map(ele -> resolveProvider(ele, key))
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(String.format("Can not find TypeResolver for type '%s'", key))
-                        )
-        );
+        if (providerCache.containsKey(javaType)) {
+            return providerCache.get(javaType);
+        }
+
+        TypeProvider<?> provider = typeResolvers.stream()
+                .filter(ele -> ele.isSupport(javaType))
+                .findFirst()
+                .map(ele -> resolveProvider(ele, javaType))
+                .orElseThrow(() ->
+                        new IllegalArgumentException(String.format("Can not find TypeResolver for type '%s'", javaType))
+                );
+
+        providerCache.put(javaType, provider);
+
+        return provider;
     }
 
     private TypeProvider<?> resolveProvider(TypeResolver<?> ele, Type type) {
