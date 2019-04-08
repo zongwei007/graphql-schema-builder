@@ -3,6 +3,7 @@ package com.ltsoft.graphql.resolver;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.TypeProvider;
 import com.ltsoft.graphql.annotations.GraphQLInput;
+import com.ltsoft.graphql.annotations.GraphQLSupperClass;
 import com.ltsoft.graphql.annotations.GraphQLType;
 import graphql.language.InputObjectTypeDefinition;
 import graphql.language.InputValueDefinition;
@@ -48,6 +49,8 @@ public class InputObjectTypeResolver extends BasicTypeResolver<InputObjectTypeDe
     private boolean isInputField(FieldInformation info) {
         Class<?> declaringClass = info.getDeclaringClass();
 
-        return hasGraphQLAnnotation(declaringClass, GraphQLInput.class) || hasGraphQLAnnotation(declaringClass, GraphQLType.class);
+        return hasGraphQLAnnotation(declaringClass, GraphQLInput.class)
+                || hasGraphQLAnnotation(declaringClass, GraphQLType.class)
+                || declaringClass.isAnnotationPresent(GraphQLSupperClass.class);
     }
 }

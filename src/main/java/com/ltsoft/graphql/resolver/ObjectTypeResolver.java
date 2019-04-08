@@ -88,7 +88,8 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     }
 
     /**
-     * 过滤字段信息。字段应从所有声明了 {@link GraphQLType} 或 {@link GraphQLInterface} 的父类继承。
+     * 过滤字段信息。
+     * 字段可从声明了 {@link GraphQLType}、{@link GraphQLInterface} 或 {@link GraphQLSupperClass} 的父类继承。
      *
      * @param info 字段信息
      * @return 是否有效
@@ -96,7 +97,10 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     private boolean isGraphQLField(FieldInformation info) {
         Class<?> declaringClass = info.getDeclaringClass();
 
-        return info.isNotIgnore() && (hasGraphQLAnnotation(declaringClass, GraphQLType.class) || hasGraphQLAnnotation(declaringClass, GraphQLInterface.class));
+        return info.isNotIgnore() && (hasGraphQLAnnotation(declaringClass, GraphQLType.class)
+                || hasGraphQLAnnotation(declaringClass, GraphQLInterface.class)
+                || declaringClass.isAnnotationPresent(GraphQLSupperClass.class)
+        );
     }
 
     private void loadDataFetcher(Class<?> cls, RuntimeWiring.Builder wiringBuilder) {

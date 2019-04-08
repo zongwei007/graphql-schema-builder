@@ -88,7 +88,11 @@ class ArgumentInformation {
     }
 
     private boolean isGraphQLType(FieldInformation info) {
-        return info.getDeclaringClass().isAnnotationPresent(GraphQLType.class);
+        Class<?> declaringClass = info.getDeclaringClass();
+
+        return hasGraphQLAnnotation(declaringClass, GraphQLType.class)
+                || hasGraphQLAnnotation(declaringClass, GraphQLInterface.class)
+                || declaringClass.isAnnotationPresent(GraphQLSupperClass.class);
     }
 
     private Value getDefaultValue(Type inputType) {

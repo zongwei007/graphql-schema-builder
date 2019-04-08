@@ -7,16 +7,12 @@ import com.ltsoft.graphql.view.CreatedView;
 
 @GraphQLType
 @GraphQLDefaultDataFetcher(EmptyDataFetcherFactory.class)
-public class MutationObject {
+public class MutationObject extends AbstractNameObject {
 
     @GraphQLField
     @GraphQLIgnore(view = CreatedView.class)
     @GraphQLNotNull
     private Long id;
-
-    @GraphQLField
-    @GraphQLNotNull(view = CreatedView.class)
-    private String name;
 
     @GraphQLField
     @GraphQLMutationType(MutationInputObject.class)
@@ -28,14 +24,6 @@ public class MutationObject {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public MutationObject getParent() {

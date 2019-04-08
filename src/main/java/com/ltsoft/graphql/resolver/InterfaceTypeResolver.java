@@ -49,6 +49,6 @@ public class InterfaceTypeResolver extends BasicTypeResolver<InterfaceTypeDefini
     }
 
     private boolean isInterfaceField(FieldInformation info) {
-        return hasGraphQLAnnotation(info.getDeclaringClass(), GraphQLInterface.class);
+        return isSupport(info.getDeclaringClass());
     }
 }
