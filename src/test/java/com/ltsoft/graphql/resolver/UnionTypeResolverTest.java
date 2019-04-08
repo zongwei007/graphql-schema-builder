@@ -22,12 +22,13 @@ public class UnionTypeResolverTest extends BasicTypeResolverTest {
 
     @Test
     public void resolve() {
+        DirectiveTypeResolver directiveResolver = new DirectiveTypeResolver();
         InterfaceTypeResolver interfaceResolver = new InterfaceTypeResolver(instanceFactory);
         ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
         UnionTypeResolver unionResolver = new UnionTypeResolver(instanceFactory);
 
-        assertThat(printDefinition(UnionObject.class, interfaceResolver, objectResolver, scalarResolver, unionResolver))
+        assertThat(printDefinition(UnionObject.class, directiveResolver, interfaceResolver, objectResolver, scalarResolver, unionResolver))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/union/UnionObject.graphql"));
     }
 }

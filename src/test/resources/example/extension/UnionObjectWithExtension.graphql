@@ -22,7 +22,7 @@ type Normal {
   "GraphQL foo field"
   foo: String
   fooList: [String]!
-  type: Int
+  type: Int @deprecated(reason : "type is deprecate")
 }
 
 type NormalInterfaceImpl implements NormalInterface {

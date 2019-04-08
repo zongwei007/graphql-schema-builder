@@ -2,7 +2,10 @@ package com.ltsoft.graphql.resolver;
 
 import com.ltsoft.graphql.InstanceFactory;
 import com.ltsoft.graphql.example.iface.NormalInterface;
-import com.ltsoft.graphql.example.object.*;
+import com.ltsoft.graphql.example.object.ArgumentService;
+import com.ltsoft.graphql.example.object.GenericServiceImpl;
+import com.ltsoft.graphql.example.object.MutationService;
+import com.ltsoft.graphql.example.object.NormalObject;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import org.junit.Test;
 
@@ -19,16 +22,16 @@ public class ObjectTypeResolverTest extends BasicTypeResolverTest {
         ObjectTypeResolver resolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
 
         assertThat(resolver.isSupport(NormalObject.class)).isTrue();
-        assertThat(resolver.isSupport(ObjectWithExtension.class)).isTrue();
         assertThat(resolver.isSupport(NormalInterface.class)).isFalse();
     }
 
     @Test
     public void normalObject() {
+        DirectiveTypeResolver directiveResolver = new DirectiveTypeResolver();
         ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
-        assertThat(printDefinition(NormalObject.class, objectResolver, scalarResolver))
+        assertThat(printDefinition(NormalObject.class, directiveResolver, objectResolver, scalarResolver))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/object/NormalObject.graphql"));
     }
 
@@ -60,15 +63,5 @@ public class ObjectTypeResolverTest extends BasicTypeResolverTest {
 
         assertThat(printDefinition(GenericServiceImpl.class, inputResolver, objectResolver, scalarResolver))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/object/GenericServiceImpl.graphql"));
-    }
-
-    @Test
-    public void fieldExtension() {
-        DirectiveTypeResolver directiveResolver = new DirectiveTypeResolver();
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
-        ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
-
-        assertThat(printDefinition(ObjectWithExtension.class, directiveResolver, objectResolver, scalarResolver))
-                .isEqualToIgnoringWhitespace(readSchemaExample("/example/object/ObjectWithExtension.graphql"));
     }
 }

@@ -26,6 +26,7 @@ public class NormalObject {
     private List<String> fooList;
 
     @GraphQLField
+    @GraphQLDeprecate("type is deprecate")
     private Integer type;
 
     @GraphQLField

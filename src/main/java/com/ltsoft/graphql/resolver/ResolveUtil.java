@@ -281,24 +281,10 @@ public final class ResolveUtil {
     }
 
     static Stream<FieldInformation> resolveFields(Class<?> cls) {
-        Stream<FieldInformation> ownFields = Arrays.stream(cls.getMethods())
+        return Arrays.stream(cls.getMethods())
                 .filter(ResolveUtil::isInvokable)
                 .map(method -> new FieldInformation(cls, method))
                 .filter(FieldInformation::isField);
-
-        Stream<FieldInformation> extensions = resolveExtensionFields(cls.getAnnotation(GraphQLFieldExtension.class));
-
-        return Stream.concat(ownFields, extensions);
-    }
-
-    private static Stream<FieldInformation> resolveExtensionFields(GraphQLFieldExtension annotation) {
-        if (annotation == null) {
-            return Stream.of();
-        }
-
-        return Arrays.stream(annotation.value())
-                .filter(cls -> Modifier.isAbstract(cls.getModifiers())) //字段扩展只支持在抽象类上声明
-                .flatMap(ResolveUtil::resolveFields);
     }
 
     static boolean hasReturnType(Method method) {
