@@ -4,9 +4,6 @@ import com.google.common.reflect.ClassPath;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import com.ltsoft.graphql.resolver.ResolveUtil;
 import com.ltsoft.graphql.resolver.TypeProviderFactory;
-import com.ltsoft.graphql.visibility.FieldVisibilityFilter;
-import com.ltsoft.graphql.visibility.RuntimeFieldVisibilityFilter;
-import com.ltsoft.graphql.visibility.TypeVisibilityFilter;
 import graphql.language.Document;
 import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLSchema;
@@ -29,8 +26,6 @@ public final class GraphQLSchemaBuilder {
     private final Set<String> packageNames = new HashSet<>();
     private final Set<Class<?>> types = new HashSet<>();
     private final List<ArgumentProviderFactory<?>> argumentProviderFactories = new ArrayList<>();
-    private final List<FieldVisibilityFilter> fieldFilters = new ArrayList<>();
-    private final List<TypeVisibilityFilter> typeFilters = new ArrayList<>();
     private final List<TypeDefinitionRegistry> typeDefinitionRegistries = new ArrayList<>();
     private final List<TypeResolver<?>> typeResolvers = new ArrayList<>();
     private final List<TypeProvider<?>> typeProviders = new ArrayList<>();
@@ -57,16 +52,6 @@ public final class GraphQLSchemaBuilder {
 
     public GraphQLSchemaBuilder argumentFactory(ArgumentProviderFactory<?>... factories) {
         Collections.addAll(argumentProviderFactories, factories);
-        return this;
-    }
-
-    public GraphQLSchemaBuilder fieldFilter(FieldVisibilityFilter... filters) {
-        Collections.addAll(fieldFilters, filters);
-        return this;
-    }
-
-    public GraphQLSchemaBuilder typeFilter(TypeVisibilityFilter... filters) {
-        Collections.addAll(typeFilters, filters);
         return this;
     }
 
@@ -132,8 +117,6 @@ public final class GraphQLSchemaBuilder {
         for (TypeDefinitionRegistry registry : typeDefinitionRegistries) {
             typeDefinitionRegistry = typeDefinitionRegistry.merge(registry);
         }
-
-        runtimeWiringBuilder.fieldVisibility(new RuntimeFieldVisibilityFilter(typeFilters, fieldFilters));
 
         RuntimeWiring runtimeWiring = combineUnaryOperator(runtimeWiringProcessors).apply(runtimeWiringBuilder).build();
 
