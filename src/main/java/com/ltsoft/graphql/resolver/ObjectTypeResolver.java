@@ -105,12 +105,11 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
 
     private void loadDataFetcher(Class<?> cls, RuntimeWiring.Builder wiringBuilder) {
         String parentType = resolveTypeName(cls);
-        Object serviceInstance = instanceFactory.provide(cls);
 
         for (Method method : cls.getMethods()) {
             if (method.isAnnotationPresent(GraphQLDataFetcher.class)) {
                 List<ArgumentProvider<?>> factories = resolveArgumentFactories(cls, method);
-                ServiceDataFetcher dataFetcher = new ServiceDataFetcher(serviceInstance, method, factories);
+                ServiceDataFetcher dataFetcher = new ServiceDataFetcher(instanceFactory.provide(cls), method, factories);
 
                 wiringBuilder.type(parentType, builder -> builder.dataFetcher(dataFetcher.getFieldName(), dataFetcher));
 
