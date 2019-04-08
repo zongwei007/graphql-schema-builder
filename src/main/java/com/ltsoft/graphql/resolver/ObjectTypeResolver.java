@@ -77,7 +77,9 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     }
 
     private List<graphql.language.Type> resolveInterfaces(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
-        return Arrays.stream(cls.getInterfaces())
+        //noinspection UnstableApiUsage
+        return TypeToken.of(cls).getTypes().stream()
+                .map(TypeToken::getRawType)
                 .filter(ele -> ele.isAnnotationPresent(GraphQLInterface.class))
                 .map(resolver::apply)
                 .map(TypeProvider::getTypeName)
@@ -85,8 +87,16 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 过滤字段信息。字段应从所有声明了 {@link GraphQLType} 或 {@link GraphQLInterface} 的父类继承。
+     *
+     * @param info 字段信息
+     * @return 是否有效
+     */
     private boolean isGraphQLField(FieldInformation info) {
-        return info.test((method, field) -> isSupport(method.getDeclaringClass())) && info.isNotIgnore();
+        Class<?> declaringClass = info.getDeclaringClass();
+
+        return info.isNotIgnore() && (hasGraphQLAnnotation(declaringClass, GraphQLType.class) || hasGraphQLAnnotation(declaringClass, GraphQLInterface.class));
     }
 
     private void loadDataFetcher(Class<?> cls, RuntimeWiring.Builder wiringBuilder) {

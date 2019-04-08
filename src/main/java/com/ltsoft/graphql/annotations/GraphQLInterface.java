@@ -11,7 +11,7 @@ import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * GraphQL Interface 类型
+ * GraphQL Interface 类型。应声明于 Java interface 或 abstract class 上。
  */
 @Documented
 @Retention(RUNTIME)

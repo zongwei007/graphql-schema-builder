@@ -46,8 +46,8 @@ public class InputObjectTypeResolver extends BasicTypeResolver<InputObjectTypeDe
     }
 
     private boolean isInputField(FieldInformation info) {
-        return info.test((method, field) ->
-                hasGraphQLAnnotation(method.getDeclaringClass(), GraphQLInput.class) || hasGraphQLAnnotation(method.getDeclaringClass(), GraphQLType.class)
-        );
+        Class<?> declaringClass = info.getDeclaringClass();
+
+        return hasGraphQLAnnotation(declaringClass, GraphQLInput.class) || hasGraphQLAnnotation(declaringClass, GraphQLType.class);
     }
 }

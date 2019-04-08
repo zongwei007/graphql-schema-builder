@@ -205,11 +205,6 @@ public final class ResolveUtil {
      * @return 是否支持
      */
     public static boolean canResolve(Class<?> cls) {
-        //抽象类不能作为解析入口
-        if (!cls.isInterface() && Modifier.isAbstract(cls.getModifiers())) {
-            return false;
-        }
-
         return cls.isAnnotationPresent(GraphQLType.class)
                 || cls.isAnnotationPresent(GraphQLInterface.class)
                 || cls.isAnnotationPresent(GraphQLInput.class)
@@ -288,6 +283,10 @@ public final class ResolveUtil {
     }
 
     static boolean hasReturnType(Method method) {
+        if (method == null) {
+            return false;
+        }
+
         return !void.class.equals(method.getReturnType()) && !Void.class.equals(method.getReturnType());
     }
 

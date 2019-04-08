@@ -1,0 +1,22 @@
+interface AbstractInterface {
+  ifaceName: String
+  info: String
+}
+
+interface NormalInterface {
+  info: String
+}
+
+type InterfaceImpl implements AbstractInterface & NormalInterface {
+  ifaceName: String
+  impl: Int
+  info: String
+}
+
+type Query {
+  hello: String
+}
+
+type schema {
+  query: Query
+}

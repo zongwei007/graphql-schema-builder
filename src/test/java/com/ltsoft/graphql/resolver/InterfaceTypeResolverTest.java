@@ -1,9 +1,12 @@
 package com.ltsoft.graphql.resolver;
 
 import com.ltsoft.graphql.InstanceFactory;
+import com.ltsoft.graphql.example.iface.InterfaceImpl;
 import com.ltsoft.graphql.example.iface.NormalInterface;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import org.junit.Test;
+
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,5 +28,15 @@ public class InterfaceTypeResolverTest extends BasicTypeResolverTest {
 
         assertThat(printDefinition(NormalInterface.class, interfaceResolver, scalarResolver))
                 .isEqualToIgnoringWhitespace(readSchemaExample("/example/iface/NormalInterface.graphql"));
+    }
+
+    @Test
+    public void resolveClass() {
+        InterfaceTypeResolver interfaceResolver = new InterfaceTypeResolver(instanceFactory);
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
+
+        assertThat(printDefinition(InterfaceImpl.class, interfaceResolver, objectResolver, scalarResolver))
+                .isEqualToIgnoringWhitespace(readSchemaExample("/example/iface/InterfaceImpl.graphql"));
     }
 }

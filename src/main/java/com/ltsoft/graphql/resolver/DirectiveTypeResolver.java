@@ -74,6 +74,6 @@ public class DirectiveTypeResolver extends BasicTypeResolver<DirectiveDefinition
     }
 
     private boolean isDirectiveArgument(FieldInformation info) {
-        return info.test((method, field) -> isSupport(method.getDeclaringClass()));
+        return isSupport(info.getDeclaringClass());
     }
 }

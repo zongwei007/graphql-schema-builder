@@ -26,9 +26,7 @@ public class InterfaceTypeResolver extends BasicTypeResolver<InterfaceTypeDefini
     @Override
     public boolean isSupport(Type javaType) {
         //noinspection UnstableApiUsage
-        Class<?> type = TypeToken.of(javaType).getRawType();
-
-        return type.isInterface() && hasGraphQLAnnotation(type, GraphQLInterface.class);
+        return hasGraphQLAnnotation(TypeToken.of(javaType).getRawType(), GraphQLInterface.class);
     }
 
     @Override
@@ -51,6 +49,6 @@ public class InterfaceTypeResolver extends BasicTypeResolver<InterfaceTypeDefini
     }
 
     private boolean isInterfaceField(FieldInformation info) {
-        return info.test((method, field) -> hasGraphQLAnnotation(method.getDeclaringClass(), GraphQLInterface.class));
+        return hasGraphQLAnnotation(info.getDeclaringClass(), GraphQLInterface.class);
     }
 }

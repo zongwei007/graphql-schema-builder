@@ -6,6 +6,7 @@ import com.ltsoft.graphql.TypeProvider;
 import com.ltsoft.graphql.TypeResolver;
 import com.ltsoft.graphql.annotations.GraphQLComment;
 import com.ltsoft.graphql.annotations.GraphQLTypeExtension;
+import com.ltsoft.graphql.impl.FieldDefinitionCollector;
 import com.ltsoft.graphql.provider.ExtensionTypeProvider;
 import graphql.language.*;
 
@@ -90,9 +91,8 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
                 .filter(filter)
                 .filter(info -> info.test((method, field) -> hasReturnType(method)))
                 .map(info -> info.getFieldDefinition(resolver))
-                .collect(Collectors.toList());
+                .collect(new FieldDefinitionCollector<>(FieldDefinition::getName));
     }
-
 
     @SuppressWarnings("unchecked")
     private <D extends Definition> D wrapAsExtension(D definition) {
