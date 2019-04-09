@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings({"UnstableApiUsage", "WeakerAccess"})
 public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
@@ -46,7 +47,7 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
             return toBean(environment.getArguments(), typeToken, environment);
         }
 
-        Object value = environment.getArgument(argumentName);
+        Object value = environment.getArgument(requireNonNull(argumentName));
 
         if (value instanceof Collection) {
             return toCollection(value, typeToken, environment);

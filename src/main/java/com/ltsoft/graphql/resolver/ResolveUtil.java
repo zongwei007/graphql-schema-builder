@@ -112,7 +112,7 @@ public final class ResolveUtil {
     }
 
     /**
-     * 解析 GraphQL 参数名称
+     * 解析 GraphQL 参数名称。若未通过 {@link GraphQLArgument} 声明参数名称，则需要启用 JDK8+ 编译参数 -parameters。
      *
      * @param parameter 需要解析的参数
      * @return 参数名称
@@ -121,7 +121,12 @@ public final class ResolveUtil {
         return Optional.of(parameter.getAnnotation(com.ltsoft.graphql.annotations.GraphQLArgument.class))
                 .map(com.ltsoft.graphql.annotations.GraphQLArgument::value)
                 .filter(name -> !name.trim().isEmpty())
-                .orElse(parameter.getName());
+                .orElseGet(() ->
+                        Optional.of(parameter)
+                                .filter(Parameter::isNamePresent)
+                                .map(Parameter::getName)
+                                .orElse(null)
+                );
     }
 
     static TypeName resolveTypeReference(GraphQLTypeReference annotation, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {

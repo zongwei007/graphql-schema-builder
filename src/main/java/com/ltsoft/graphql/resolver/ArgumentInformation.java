@@ -14,6 +14,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static java.util.Objects.requireNonNull;
 
 class ArgumentInformation {
 
@@ -68,7 +69,7 @@ class ArgumentInformation {
                     .description(getDescription())
                     .defaultValue(getDefaultValue(inputType))
                     .directives(getDirectives(resolver))
-                    .name(getName())
+                    .name(requireNonNull(getName(), String.format("Parameter %s of '%s#%s' need to define a name", parameter.getName(), field.getDeclaringClass(), field.getName())))
                     .type(inputType)
                     .build();
 
