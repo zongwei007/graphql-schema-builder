@@ -139,26 +139,6 @@ public final class ResolveUtil {
         return Strings.isNullOrEmpty(name) ? null : new TypeName(name);
     }
 
-    static Type replaceTypeName(Type inputType, TypeName replace) {
-        if (inputType instanceof NonNullType) {
-            NonNullType nonNullType = (NonNullType) inputType;
-
-            return nonNullType.transform(ele -> ele.type(replaceTypeName(nonNullType.getType(), replace)));
-        }
-
-        if (inputType instanceof ListType) {
-            ListType listType = (ListType) inputType;
-
-            return listType.transform(ele -> ele.type(replaceTypeName(listType.getType(), replace)));
-        }
-
-        if (inputType instanceof TypeName) {
-            return replace;
-        }
-
-        return inputType;
-    }
-
     /**
      * 将 getter 方法名转换为 fieldName
      *
@@ -271,20 +251,54 @@ public final class ResolveUtil {
         Collections.addAll(DIRECTIVE_RESOLVERS, resolvers);
     }
 
-    private static Directive resolveDirective(Annotation annotation) {
-        //noinspection unchecked
-        return DIRECTIVE_RESOLVERS.stream()
-                .filter(ele -> ele.isSupport(annotation.annotationType()))
-                .findFirst()
-                .map(ele -> ele.builder(annotation).build())
-                .orElse(null);
+    @SuppressWarnings("UnstableApiUsage")
+    public static boolean isGraphQLList(TypeToken<?> typeToken) {
+        return typeToken.isArray() || typeToken.isSubtypeOf(Collection.class);
     }
 
-    static Stream<FieldInformation> resolveFields(Class<?> cls) {
+    @SuppressWarnings({"UnstableApiUsage", "WeakerAccess"})
+    public static TypeToken<?> unwrapListType(TypeToken<?> typeToken) {
+        if (isGraphQLList(typeToken)) {
+            if (typeToken.getComponentType() != null) {
+                return typeToken.getComponentType();
+            } else {
+                TypeVariable<? extends Class<?>>[] typeParameters = typeToken.getRawType().getTypeParameters();
+
+                checkState(typeParameters.length == 1);
+
+                return typeToken.resolveType(typeParameters[0]);
+            }
+        } else {
+            return typeToken;
+        }
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public static Stream<FieldInformation> resolveFields(Class<?> cls) {
         return Arrays.stream(cls.getMethods())
                 .filter(ResolveUtil::isInvokable)
                 .map(method -> new FieldInformation(cls, method))
                 .filter(FieldInformation::isField);
+    }
+
+    static Type replaceTypeName(Type inputType, TypeName replace) {
+        if (inputType instanceof NonNullType) {
+            NonNullType nonNullType = (NonNullType) inputType;
+
+            return nonNullType.transform(ele -> ele.type(replaceTypeName(nonNullType.getType(), replace)));
+        }
+
+        if (inputType instanceof ListType) {
+            ListType listType = (ListType) inputType;
+
+            return listType.transform(ele -> ele.type(replaceTypeName(listType.getType(), replace)));
+        }
+
+        if (inputType instanceof TypeName) {
+            return replace;
+        }
+
+        return inputType;
     }
 
     static boolean hasReturnType(Method method) {
@@ -293,18 +307,6 @@ public final class ResolveUtil {
         }
 
         return !void.class.equals(method.getReturnType()) && !Void.class.equals(method.getReturnType());
-    }
-
-    private static boolean isInvokable(Method method) {
-        //noinspection UnstableApiUsage
-        Invokable<?, Object> invokable = Invokable.from(method);
-
-        return !invokable.isStatic() && invokable.isPublic() && !method.isBridge();
-    }
-
-    @SuppressWarnings("UnstableApiUsage")
-    public static boolean isGraphQLList(TypeToken<?> typeToken) {
-        return typeToken.isArray() || typeToken.isSubtypeOf(Collection.class);
     }
 
     static Value resolveInputDefaultValue(GraphQLDefaultValue defaultValue, Type inputType, Boolean isEnum) {
@@ -366,23 +368,6 @@ public final class ResolveUtil {
         return result;
     }
 
-    @SuppressWarnings({"UnstableApiUsage", "WeakerAccess"})
-    public static TypeToken<?> unwrapListType(TypeToken<?> typeToken) {
-        if (isGraphQLList(typeToken)) {
-            if (typeToken.getComponentType() != null) {
-                return typeToken.getComponentType();
-            } else {
-                TypeVariable<? extends Class<?>>[] typeParameters = typeToken.getRawType().getTypeParameters();
-
-                checkState(typeParameters.length == 1);
-
-                return typeToken.resolveType(typeParameters[0]);
-            }
-        } else {
-            return typeToken;
-        }
-    }
-
     static boolean isGraphQLEnumType(Class<?> type) {
         return type.isEnum() && hasGraphQLAnnotation(type, GraphQLType.class);
     }
@@ -397,5 +382,21 @@ public final class ResolveUtil {
 
     static boolean isGraphQLExtensionType(Class<?> cls) {
         return cls.isAnnotationPresent(GraphQLTypeExtension.class);
+    }
+
+    private static Directive resolveDirective(Annotation annotation) {
+        //noinspection unchecked
+        return DIRECTIVE_RESOLVERS.stream()
+                .filter(ele -> ele.isSupport(annotation.annotationType()))
+                .findFirst()
+                .map(ele -> ele.builder(annotation).build())
+                .orElse(null);
+    }
+
+    private static boolean isInvokable(Method method) {
+        //noinspection UnstableApiUsage
+        Invokable<?, Object> invokable = Invokable.from(method);
+
+        return !invokable.isStatic() && invokable.isPublic() && !method.isBridge();
     }
 }
