@@ -22,7 +22,7 @@ public class EnumTypeResolver extends BasicTypeResolver<EnumTypeDefinition> {
     private final Map<String, EnumFieldValueProvider> enumValueProviders = new HashMap<>();
 
     @Override
-    TypeProvider<EnumTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
+    protected TypeProvider<EnumTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         List<EnumValueDefinition> definitions = Arrays.stream(cls.getFields())
                 .map(field -> new FieldInformation(cls, null, field))
                 .filter(FieldInformation::isNotIgnore)

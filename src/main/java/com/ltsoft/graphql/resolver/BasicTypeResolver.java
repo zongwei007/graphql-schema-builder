@@ -28,7 +28,7 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
 
     private static final Splitter LINE_SPLITTER = Splitter.on('\n').trimResults();
 
-    abstract TypeProvider<T> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver);
+    protected abstract TypeProvider<T> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver);
 
     @Override
     public TypeProvider<T> resolve(Type javaType, Function<Type, TypeProvider<?>> resolver) {
@@ -51,8 +51,8 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
         return provider;
     }
 
-    @SuppressWarnings("UnstableApiUsage")
-    List<Comment> getComment(Class<?> cls) {
+    @SuppressWarnings({"UnstableApiUsage", "WeakerAccess"})
+    protected List<Comment> getComment(Class<?> cls) {
         return Optional.ofNullable(cls.getAnnotation(GraphQLComment.class))
                 .map(GraphQLComment::value)
                 .map(LINE_SPLITTER::splitToList)
@@ -66,7 +66,8 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
      * @param cls 需要解析的类型
      * @return 类型描述
      */
-    Description getDescription(Class<?> cls) {
+    @SuppressWarnings("WeakerAccess")
+    protected Description getDescription(Class<?> cls) {
         return resolveDescription(cls)
                 .map(str -> new Description(str, getSourceLocation(cls), str.contains("\n")))
                 .orElse(null);
@@ -78,15 +79,18 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
      * @param cls 需要解析的类
      * @return SourceLocation 信息
      */
-    SourceLocation getSourceLocation(Class<?> cls) {
+    @SuppressWarnings("WeakerAccess")
+    protected SourceLocation getSourceLocation(Class<?> cls) {
         return new SourceLocation(0, 0, cls.getName());
     }
 
-    List<Directive> getDirective(Class<?> cls, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+    @SuppressWarnings("WeakerAccess")
+    protected List<Directive> getDirective(Class<?> cls, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         return ResolveUtil.resolveDirective(cls.getAnnotations(), resolver);
     }
 
-    List<FieldDefinition> getFieldDefinitions(Class<?> cls, Predicate<FieldInformation> filter, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
+    @SuppressWarnings("WeakerAccess")
+    protected List<FieldDefinition> getFieldDefinitions(Class<?> cls, Predicate<FieldInformation> filter, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         return resolveFields(cls)
                 .filter(filter)
                 .filter(info -> info.test((method, field) -> hasReturnType(method)))

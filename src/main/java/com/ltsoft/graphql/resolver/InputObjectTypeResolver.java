@@ -24,7 +24,7 @@ public class InputObjectTypeResolver extends BasicTypeResolver<InputObjectTypeDe
     }
 
     @Override
-    TypeProvider<InputObjectTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
+    protected TypeProvider<InputObjectTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         InputObjectTypeDefinition definition = InputObjectTypeDefinition.newInputObjectDefinition()
                 .comments(getComment(cls))
                 .description(getDescription(cls))

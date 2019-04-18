@@ -38,7 +38,7 @@ public class DirectiveTypeResolver extends BasicTypeResolver<DirectiveDefinition
     }
 
     @Override
-    TypeProvider<DirectiveDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
+    protected TypeProvider<DirectiveDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         DirectiveDefinition definition = DirectiveDefinition.newDirectiveDefinition()
                 .comments(getComment(cls))
                 .description(getDescription(cls))

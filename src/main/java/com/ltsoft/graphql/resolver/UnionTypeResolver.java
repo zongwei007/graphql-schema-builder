@@ -35,7 +35,7 @@ public class UnionTypeResolver extends BasicTypeResolver<UnionTypeDefinition> {
     }
 
     @Override
-    TypeProvider<UnionTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
+    protected TypeProvider<UnionTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         TypeResolver typeResolver = Optional.ofNullable(cls.getAnnotation(GraphQLUnion.class))
                 .map(GraphQLUnion::typeResolver)
                 .map(ele -> instanceFactory.provide(ele))

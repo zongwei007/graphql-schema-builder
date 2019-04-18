@@ -30,7 +30,7 @@ public class InterfaceTypeResolver extends BasicTypeResolver<InterfaceTypeDefini
     }
 
     @Override
-    TypeProvider<InterfaceTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
+    protected TypeProvider<InterfaceTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         TypeResolver typeResolver = Optional.ofNullable(cls.getAnnotation(GraphQLInterface.class))
                 .map(GraphQLInterface::typeResolver)
                 .map(ele -> instanceFactory.provide(ele))

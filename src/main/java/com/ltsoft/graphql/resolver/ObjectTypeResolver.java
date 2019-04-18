@@ -33,7 +33,8 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     private InstanceFactory instanceFactory;
     private List<ArgumentProviderFactory<?>> argumentFactories;
 
-    ObjectTypeResolver(InstanceFactory instanceFactory, List<ArgumentProviderFactory<?>> argumentFactories) {
+    @SuppressWarnings("WeakerAccess")
+    protected ObjectTypeResolver(InstanceFactory instanceFactory, List<ArgumentProviderFactory<?>> argumentFactories) {
         this.instanceFactory = instanceFactory;
         this.argumentFactories = argumentFactories;
     }
@@ -47,7 +48,7 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     }
 
     @Override
-    TypeProvider<ObjectTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
+    protected TypeProvider<ObjectTypeDefinition> resolve(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
         ObjectTypeDefinition definition = ObjectTypeDefinition.newObjectTypeDefinition()
                 .comments(getComment(cls))
                 .description(getDescription(cls))
