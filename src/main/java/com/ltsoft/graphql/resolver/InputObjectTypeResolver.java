@@ -11,9 +11,9 @@ import graphql.language.InputValueDefinition;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static com.ltsoft.graphql.resolver.ResolveUtil.hasGraphQLAnnotation;
+import static com.ltsoft.graphql.resolver.ResolveUtil.resolveTypeName;
 
 public class InputObjectTypeResolver extends BasicTypeResolver<InputObjectTypeDefinition> {
 
@@ -38,12 +38,7 @@ public class InputObjectTypeResolver extends BasicTypeResolver<InputObjectTypeDe
     }
 
     private List<InputValueDefinition> resolveInputValueDefinitions(Class<?> cls, Function<Type, TypeProvider<?>> resolver) {
-        return resolveFields(cls)
-                .filter(FieldInformation::isSetter)
-                .filter(FieldInformation::isNotIgnore)
-                .filter(this::isInputField)
-                .map(info -> info.getInputValueDefinition(new Class[0], resolver))
-                .collect(Collectors.toList());
+        return getInputValueDefinitions(cls, this::isInputField, resolver);
     }
 
     private boolean isInputField(FieldInformation info) {

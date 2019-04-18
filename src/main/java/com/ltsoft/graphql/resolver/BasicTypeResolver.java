@@ -98,6 +98,16 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
                 .collect(new FieldDefinitionCollector<>(FieldDefinition::getName));
     }
 
+    @SuppressWarnings("WeakerAccess")
+    protected List<InputValueDefinition> getInputValueDefinitions(Class<?> cls, Predicate<FieldInformation> filter, Function<Type, TypeProvider<?>> resolver) {
+        return resolveFields(cls)
+                .filter(FieldInformation::isSetter)
+                .filter(FieldInformation::isNotIgnore)
+                .filter(filter)
+                .map(info -> info.getInputValueDefinition(new Class[0], resolver))
+                .collect(new FieldDefinitionCollector<>(InputValueDefinition::getName));
+    }
+
     @SuppressWarnings("unchecked")
     private <D extends Definition> D wrapAsExtension(D definition) {
         if (definition instanceof EnumTypeDefinition) {
@@ -141,5 +151,4 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
             return builder;
         };
     }
-
 }
