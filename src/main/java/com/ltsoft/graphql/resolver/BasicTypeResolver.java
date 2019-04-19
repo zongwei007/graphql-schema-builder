@@ -93,7 +93,7 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
     protected List<FieldDefinition> getFieldDefinitions(Class<?> cls, Predicate<FieldInformation> filter, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         return resolveFields(cls)
                 .filter(filter)
-                .filter(info -> info.test((method, field) -> hasReturnType(method)))
+                .filter(FieldInformation::isGetter)
                 .map(info -> info.getFieldDefinition(resolver))
                 .collect(new FieldDefinitionCollector<>(FieldDefinition::getName));
     }

@@ -147,8 +147,13 @@ public class FieldInformation {
     }
 
     @SuppressWarnings("WeakerAccess")
+    public boolean isGetter() {
+        return method == null || hasReturnType(method);
+    }
+
+    @SuppressWarnings("WeakerAccess")
     public boolean isSetter() {
-        return method != null && SETTER_PREFIX.matcher(method.getName()).matches();
+        return method == null || SETTER_PREFIX.matcher(method.getName()).matches();
     }
 
     @SuppressWarnings("WeakerAccess")
