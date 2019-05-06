@@ -47,7 +47,7 @@ public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
 
                     if (val instanceof Collection) {
                         param = toCollection(val, paramType, environment);
-                    } else if (val instanceof Map) {
+                    } else if (val instanceof Map && !paramType.isSupertypeOf(Map.class)) {
                         //noinspection unchecked
                         param = toBean((Map<String, Object>) val, paramType, environment);
                     }
