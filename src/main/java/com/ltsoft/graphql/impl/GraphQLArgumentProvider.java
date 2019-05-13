@@ -40,25 +40,23 @@ public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
                 String key = entry.getKey();
                 Object val = entry.getValue();
 
-                if (val == null) {
+                Method method = findSetter(type, key, val);
+
+                if (method == null) {
                     continue;
                 }
 
-                Method method = findSetter(type, key, val);
+                Object param = val;
+                TypeToken<?> paramType = TypeToken.of(method.getParameters()[0].getParameterizedType());
 
-                if (method != null) {
-                    Object param = val;
-                    TypeToken<?> paramType = TypeToken.of(method.getParameters()[0].getParameterizedType());
-
-                    if (val instanceof Collection) {
-                        param = toCollection(val, paramType, environment);
-                    } else if (val instanceof Map && !paramType.isSupertypeOf(Map.class)) {
-                        //noinspection unchecked
-                        param = toBean((Map<String, Object>) val, paramType, environment);
-                    }
-
-                    method.invoke(bean, param);
+                if (val instanceof Collection) {
+                    param = toCollection(val, paramType, environment);
+                } else if (val instanceof Map && !paramType.isSupertypeOf(Map.class)) {
+                    //noinspection unchecked
+                    param = toBean((Map<String, Object>) val, paramType, environment);
                 }
+
+                method.invoke(bean, param);
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new IllegalStateException(String.format("Convert data to %s fail", type.getRawType().getName()), e);
@@ -75,15 +73,23 @@ public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
         try {
             return METHOD_CACHE.get(rawType.getName() + "#" + key, () -> {
                 try {
-                    return Optional.of(rawType.getMethod(methodName, val.getClass()));
+                    if (val != null) {
+                        return Optional.of(rawType.getMethod(methodName, val.getClass()));
+                    } else {
+                        return findSetterByName(rawType, methodName);
+                    }
                 } catch (NoSuchMethodException e) {
-                    return Arrays.stream(rawType.getMethods())
-                            .filter(method -> methodName.equals(method.getName()))
-                            .findFirst();
+                    return findSetterByName(rawType, methodName);
                 }
             }).orElse(null);
         } catch (ExecutionException e) {
             throw new IllegalStateException(String.format("Find method '%s' of class '%s' fail.", methodName, rawType.getName()), e);
         }
+    }
+
+    private Optional<Method> findSetterByName(Class<?> type, String methodName) {
+        return Arrays.stream(type.getMethods())
+                .filter(method -> methodName.equals(method.getName()))
+                .findFirst();
     }
 }
