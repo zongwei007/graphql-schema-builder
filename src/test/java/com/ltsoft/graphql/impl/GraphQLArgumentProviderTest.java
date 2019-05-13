@@ -8,10 +8,7 @@ import org.junit.Test;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -58,6 +55,30 @@ public class GraphQLArgumentProviderTest {
                     assertThat(mutationObject.getParent().getId()).isEqualTo(1L);
                     assertThat(mutationObject.getParent().getName()).isEqualTo("bar");
                     assertThat(mutationObject.getParent().getParent()).isNull();
+                });
+    }
+
+    @Test
+    public void nullable() throws Exception {
+        GraphQLArgumentProvider provider = buildArgumentProvider("helloAsObj", MutationObject.class);
+
+        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
+        when(environment.getArguments()).thenReturn(new HashMap<String, Object>() {{
+            put("id", 2L);
+            put("name", "foo");
+            put("parent", null);
+        }});
+
+        Object argument = provider.provide(environment);
+
+        assertThat(provider.isGenericType()).isTrue();
+        assertThat(argument).isInstanceOf(MutationObject.class)
+                .satisfies(object -> {
+                    MutationObject mutationObject = (MutationObject) object;
+
+                    assertThat(mutationObject.getId()).isEqualTo(2L);
+                    assertThat(mutationObject.getName()).isEqualTo("foo");
+                    assertThat(mutationObject.getParent()).isNull();
                 });
     }
 

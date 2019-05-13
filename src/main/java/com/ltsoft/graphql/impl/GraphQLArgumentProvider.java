@@ -39,6 +39,11 @@ public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
             for (Map.Entry<String, Object> entry : source.entrySet()) {
                 String key = entry.getKey();
                 Object val = entry.getValue();
+
+                if (val == null) {
+                    continue;
+                }
+
                 Method method = findSetter(type, key, val);
 
                 if (method != null) {
