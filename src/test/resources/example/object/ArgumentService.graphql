@@ -5,7 +5,10 @@ type ArgumentService {
   helloAsObj(id: Long!, name: String, parent: MutationInputObject): MutationObject
   map(input: Object): Object
   mapList(list: [Object]): [Object]
+  scalar(year: Year): Year
+  simpleArray(array: [Int]): [Int]
   simpleList(list: [String]): [String]
+  simpleSet(set: [String]): [String]
 }
 
 type MutationObject {

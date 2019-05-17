@@ -4,8 +4,10 @@ import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.ArgumentProvider;
 import com.ltsoft.graphql.annotations.GraphQLType;
 import com.ltsoft.graphql.annotations.GraphQLTypeReference;
+import com.ltsoft.graphql.scalars.ScalarTypeRepository;
 import graphql.schema.DataFetchingEnvironment;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -44,107 +46,96 @@ public abstract class BasicArgumentProvider<T> implements ArgumentProvider<T> {
     @Override
     public T provide(DataFetchingEnvironment environment) {
         if (isGenericType) {
-            return toBean(environment.getArguments(), typeToken, environment);
-        }
-
-        Object value = environment.getArgument(requireNonNull(argumentName));
-
-        if (value instanceof Collection) {
-            return toCollection(value, typeToken, environment);
-        } else if (value instanceof Map) {
-            if (typeToken.isSubtypeOf(Map.class)) {
-                return toMap(value, typeToken);
-            } else {
-                //noinspection unchecked
-                return toBean((Map<String, Object>) value, typeToken, environment);
-            }
-        } else {
             //noinspection unchecked
-            return (T) value;
+            return (T) toBean(environment.getArguments(), typeToken, environment);
         }
-    }
-
-    @SuppressWarnings({"unchecked"})
-    protected T toMap(Object value, TypeToken<?> typeToken) {
-        checkArgument(value instanceof Map);
-
-        if (typeToken.isSupertypeOf(value.getClass())) {
-            return (T) value;
-        } else {
-            try {
-                Map<String, Object> source = (Map<String, Object>) value;
-                Map<String, Object> target;
-
-                if (typeToken.getRawType().equals(Map.class)) {
-                    target = new HashMap<>();
-                } else {
-                    target = (Map<String, Object>) typeToken.getRawType().getConstructor().newInstance();
-                }
-
-                target.putAll(source);
-
-                return (T) target;
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                throw new IllegalArgumentException(e);
-            }
-        }
-    }
-
-    protected T toCollection(Object value, TypeToken<?> typeToken, DataFetchingEnvironment environment) {
-        checkArgument(value instanceof Collection);
-
-        boolean isArray = typeToken.isArray();
-
-        TypeToken<?> rawType;
-        Class<?> listType = null;
-
-        if (typeToken.getComponentType() != null) {
-            rawType = typeToken.getComponentType();
-        } else if (typeToken.isSubtypeOf(Iterable.class)) {
-            listType = typeToken.getRawType();
-            rawType = typeToken.resolveType(listType.getTypeParameters()[0]);
-        } else {
-            throw new IllegalArgumentException(String.format("Can not resolve collection type of '%s'", typeToken));
-        }
-
-        Stream<?> resultStream = ((Collection<?>) value).stream()
-                .map(ele -> {
-                    if (ele instanceof Map) {
-                        if (rawType.isSubtypeOf(Map.class)) {
-                            return toMap(ele, rawType);
-                        } else {
-                            //noinspection unchecked
-                            return toBean((Map<String, Object>) ele, rawType, environment);
-                        }
-                    } else {
-                        return ele;
-                    }
-                });
 
         //noinspection unchecked
-        return (T) (isArray ? resultStream.toArray() : resultStream.collect(Collectors.toCollection(new CollectionSupplier(listType))));
+        return (T) toTypeOf(environment.getArgument(requireNonNull(argumentName)), typeToken, environment);
     }
 
-    protected abstract T toBean(Map<String, Object> source, TypeToken<?> type, DataFetchingEnvironment environment);
+    protected abstract <E> E toBean(Map<String, Object> source, TypeToken<E> type, DataFetchingEnvironment environment);
 
-    private static class CollectionSupplier implements Supplier<Collection> {
+    @SuppressWarnings("unchecked")
+    protected <E, I> E toTypeOf(Object value, TypeToken<E> typeToken, DataFetchingEnvironment environment) {
+        if (value == null) {
+            return null;
+        }
 
-        private final Class<?> listType;
+        if (!typeToken.isSupertypeOf(value.getClass()) && isScalarType(typeToken)) {
+            return toScalarType(value, typeToken);
+        }
 
-        CollectionSupplier(Class<?> listType) {
+        if (value instanceof Collection) {
+            if (typeToken.isArray()) {
+                return (E) toArray(value, unwrapListType(typeToken), environment);
+            } else {
+                return (E) toCollection(value, (TypeToken<Collection<I>>) typeToken, environment);
+            }
+        }
+
+        if (value instanceof Map) {
+            return toBean((Map<String, Object>) value, typeToken, environment);
+        }
+
+        return (E) value;
+    }
+
+    protected <I> I[] toArray(Object value, TypeToken<I> itemType, DataFetchingEnvironment environment) {
+        //noinspection unchecked
+        return toStream(value, itemType, environment)
+                .toArray(len -> (I[]) Array.newInstance(itemType.getRawType(), len));
+    }
+
+    protected <I> Collection<I> toCollection(Object value, TypeToken<? extends Collection<I>> listType, DataFetchingEnvironment environment) {
+        TypeToken<?> itemType = unwrapListType(listType);
+
+        //noinspection unchecked
+        return (Collection<I>) toStream(value, itemType, environment)
+                .collect(Collectors.toCollection(new CollectionSupplier(listType.getRawType())));
+    }
+
+    private <I> Stream<I> toStream(Object value, TypeToken<I> itemType, DataFetchingEnvironment environment) {
+        checkArgument(value instanceof Collection);
+
+        return ((Collection<?>) value).stream()
+                .map(ele -> toTypeOf(ele, itemType, environment));
+    }
+
+    protected static boolean isScalarType(TypeToken<?> typeToken) {
+        return ScalarTypeRepository.getInstance()
+                .findMappingScalarType(typeToken.getRawType())
+                .isPresent();
+    }
+
+    protected static <E> E toScalarType(Object source, TypeToken<E> typeToken) {
+        //noinspection unchecked
+        return ScalarTypeRepository.getInstance()
+                .findMappingScalarType(typeToken.getRawType())
+                .map(scalarType -> (E) scalarType.getCoercing().parseValue(source))
+                .orElseThrow(() -> new IllegalArgumentException(String.format("'%s' is not a registered scalar type.", typeToken.toString())));
+    }
+
+    private static class CollectionSupplier<T extends Collection> implements Supplier<T> {
+
+        private final Class<T> listType;
+
+        CollectionSupplier(Class<T> listType) {
             this.listType = listType;
         }
 
         @Override
-        public Collection get() {
+        public T get() {
             if (listType.equals(Set.class)) {
-                return new HashSet<>();
-            } else if (listType.equals(Iterable.class) || listType.equals(Collection.class) || listType.equals(List.class)) {
-                return new ArrayList<>();
+                //noinspection unchecked
+                return (T) new HashSet();
+            } else if (listType.equals(Collection.class) || listType.equals(List.class)) {
+                //noinspection unchecked
+                return (T) new ArrayList();
             } else {
                 try {
-                    return (Collection) listType.getConstructor().newInstance();
-                } catch (ClassCastException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                    return listType.getConstructor().newInstance();
+                } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
                     throw new IllegalArgumentException(String.format("Can not build type '%s' as Collection", listType.getName()), e);
                 }
             }

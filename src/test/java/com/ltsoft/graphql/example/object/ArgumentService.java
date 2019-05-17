@@ -5,15 +5,18 @@ import com.ltsoft.graphql.annotations.GraphQLType;
 import com.ltsoft.graphql.annotations.GraphQLTypeReference;
 import com.ltsoft.graphql.example.input.MutationInputObject;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.Year;
+import java.util.*;
 
 @GraphQLType
 public class ArgumentService {
 
     public String hello(@GraphQLArgument("name") String name) {
         return name;
+    }
+
+    public Year scalar(@GraphQLArgument("year") Year year) {
+        return year;
     }
 
     public MutationObject helloAsObj(@GraphQLArgument MutationObject basic) {
@@ -24,11 +27,19 @@ public class ArgumentService {
         return list;
     }
 
-    public List<MutationObject> basicList(@GraphQLArgument("list") @GraphQLTypeReference(type = MutationInputObject.class) List<MutationObject> list) {
+    public Integer[] simpleArray(@GraphQLArgument("array") Integer[] array) {
+        return array;
+    }
+
+    public Set<String> simpleSet(@GraphQLArgument("set") Set<String> set) {
+        return set;
+    }
+
+    public List<MutationObject> basicList(@GraphQLArgument("list") @GraphQLTypeReference(type = MutationInputObject.class) ArrayList<MutationObject> list) {
         return list;
     }
 
-    public Map<String, String> map(@GraphQLArgument("input") LinkedHashMap<String, String> input) {
+    public Map<String, String> map(@GraphQLArgument("input") HashMap<String, String> input) {
         return input;
     }
 

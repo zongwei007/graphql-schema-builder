@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.time.Year;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -118,7 +119,7 @@ public class GraphQLArgumentProviderTest {
 
     @Test
     public void basicList() throws Exception {
-        GraphQLArgumentProvider provider = buildArgumentProvider("basicList", List.class);
+        GraphQLArgumentProvider provider = buildArgumentProvider("basicList", ArrayList.class);
 
         DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
         when(environment.getArgument("list")).thenReturn(Arrays.asList(
@@ -136,14 +137,14 @@ public class GraphQLArgumentProviderTest {
 
     @Test
     public void map() throws Exception {
-        GraphQLArgumentProvider provider = buildArgumentProvider("map", LinkedHashMap.class);
+        GraphQLArgumentProvider provider = buildArgumentProvider("map", HashMap.class);
 
         DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
         when(environment.getArgument("input")).thenReturn(ImmutableMap.of("id", 1L, "name", "foo"));
 
         Object argument = provider.provide(environment);
 
-        assertThat(argument).isInstanceOf(LinkedHashMap.class);
+        assertThat(argument).isInstanceOf(Map.class);
         //noinspection unchecked
         assertThat((Map) argument).containsKeys("id", "name");
     }
@@ -153,12 +154,56 @@ public class GraphQLArgumentProviderTest {
         GraphQLArgumentProvider provider = buildArgumentProvider("basic", MutationObject.class);
 
         DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
-        when(environment.getArgument("input")).thenReturn(ImmutableMap.of("id", 1L, "name", "foo"));
+        when(environment.getArgument("input")).thenReturn(ImmutableMap.of(
+                "id", 1L, "name", "foo", "something", "nothing"
+        ));
 
         Object argument = provider.provide(environment);
 
         assertThat(argument).isInstanceOf(MutationObject.class);
         assertThat(((MutationObject) argument).getId()).isEqualTo(1L);
+    }
+
+    @Test
+    public void scalar() throws Exception {
+        GraphQLArgumentProvider provider = buildArgumentProvider("scalar", Year.class);
+
+        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
+        when(environment.getArgument("year")).thenReturn(2019);
+
+        Object argument = provider.provide(environment);
+
+        assertThat(argument).isInstanceOf(Year.class);
+        assertThat(((Year) argument)).isEqualTo(Year.of(2019));
+    }
+
+    @Test
+    public void simpleArray() throws Exception {
+        GraphQLArgumentProvider provider = buildArgumentProvider("simpleArray", Integer[].class);
+
+        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
+        when(environment.getArgument("array")).thenReturn(Arrays.asList(1, 2, 3, 4));
+
+        Object argument = provider.provide(environment);
+
+        assertThat(provider.getArgumentName()).isEqualTo("array");
+        assertThat(argument).isInstanceOf(Integer[].class);
+        assertThat((Integer[]) argument).containsOnly(1, 2, 3, 4);
+    }
+
+    @Test
+    public void simpleSet() throws Exception {
+        GraphQLArgumentProvider provider = buildArgumentProvider("simpleSet", Set.class);
+
+        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
+        when(environment.getArgument("set")).thenReturn(Arrays.asList("a", "a", "b"));
+
+        Object argument = provider.provide(environment);
+
+        assertThat(provider.getArgumentName()).isEqualTo("set");
+        assertThat(argument).isInstanceOf(Set.class);
+        //noinspection unchecked
+        assertThat((Set) argument).containsOnly("a", "b");
     }
 
     private GraphQLArgumentProvider buildArgumentProvider(String name, Class<?>... argumentType) throws NoSuchMethodException {

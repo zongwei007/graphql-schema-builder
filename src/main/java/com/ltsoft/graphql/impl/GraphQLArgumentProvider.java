@@ -11,7 +11,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -32,7 +31,7 @@ public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
 
     @Override
     @SuppressWarnings("UnstableApiUsage")
-    protected Object toBean(Map<String, Object> source, TypeToken<?> type, DataFetchingEnvironment environment) {
+    protected <E> E toBean(Map<String, Object> source, TypeToken<E> type, DataFetchingEnvironment environment) {
         Object bean = instanceFactory.provide(type.getRawType());
 
         try {
@@ -46,23 +45,16 @@ public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
                     continue;
                 }
 
-                Object param = val;
                 TypeToken<?> paramType = TypeToken.of(method.getParameters()[0].getParameterizedType());
 
-                if (val instanceof Collection) {
-                    param = toCollection(val, paramType, environment);
-                } else if (val instanceof Map && !paramType.isSupertypeOf(Map.class)) {
-                    //noinspection unchecked
-                    param = toBean((Map<String, Object>) val, paramType, environment);
-                }
-
-                method.invoke(bean, param);
+                method.invoke(bean, toTypeOf(val, paramType, environment));
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new IllegalStateException(String.format("Convert data to %s fail", type.getRawType().getName()), e);
         }
 
-        return bean;
+        //noinspection unchecked
+        return (E) bean;
     }
 
     @SuppressWarnings("UnstableApiUsage")
