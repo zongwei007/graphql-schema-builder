@@ -26,6 +26,7 @@ public final class GraphQLSchemaBuilder {
     private final Set<String> packageNames = new HashSet<>();
     private final Set<Class<?>> types = new HashSet<>();
     private final List<ArgumentProviderFactory<?>> argumentProviderFactories = new ArrayList<>();
+    private final List<ArgumentConverter<?>> argumentConverters = new ArrayList<>();
     private final List<TypeDefinitionRegistry> typeDefinitionRegistries = new ArrayList<>();
     private final List<TypeResolver<?>> typeResolvers = new ArrayList<>();
     private final List<TypeProvider<?>> typeProviders = new ArrayList<>();
@@ -52,6 +53,11 @@ public final class GraphQLSchemaBuilder {
 
     public GraphQLSchemaBuilder argumentFactory(ArgumentProviderFactory<?>... factories) {
         Collections.addAll(argumentProviderFactories, factories);
+        return this;
+    }
+
+    public GraphQLSchemaBuilder argumentConverter(ArgumentConverter<?>... converters) {
+        Collections.addAll(argumentConverters, converters);
         return this;
     }
 
@@ -97,7 +103,8 @@ public final class GraphQLSchemaBuilder {
         RuntimeWiring.Builder runtimeWiringBuilder = RuntimeWiring.newRuntimeWiring();
 
         TypeProviderFactory factory = new TypeProviderFactory();
-        factory.setArgumentFactories(argumentProviderFactories);
+        factory.setArgumentProviderFactories(argumentProviderFactories);
+        factory.setArgumentConverters(argumentConverters);
         factory.setInstanceFactory(instanceFactory);
 
         scalarTypeMap.forEach(factory::addScalar);

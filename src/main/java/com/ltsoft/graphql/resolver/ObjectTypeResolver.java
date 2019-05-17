@@ -18,6 +18,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -30,13 +31,22 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
 
     private static Logger LOGGER = LoggerFactory.getLogger(ObjectTypeResolver.class);
 
-    private InstanceFactory instanceFactory;
-    private List<ArgumentProviderFactory<?>> argumentFactories;
+    private final InstanceFactory instanceFactory;
+    private final List<ArgumentProviderFactory<?>> argumentFactories;
+    private final List<ArgumentConverter<?>> argumentConverters;
+
+    public ObjectTypeResolver(InstanceFactory instanceFactory) {
+        this(instanceFactory, Collections.emptyList(), Collections.emptyList());
+    }
 
     @SuppressWarnings("WeakerAccess")
-    protected ObjectTypeResolver(InstanceFactory instanceFactory, List<ArgumentProviderFactory<?>> argumentFactories) {
+    protected ObjectTypeResolver(InstanceFactory instanceFactory,
+                                 List<ArgumentProviderFactory<?>> argumentFactories,
+                                 List<ArgumentConverter<?>> argumentConverters
+    ) {
         this.instanceFactory = instanceFactory;
         this.argumentFactories = argumentFactories;
+        this.argumentConverters = argumentConverters;
     }
 
     @Override
@@ -143,7 +153,7 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
 
     private ArgumentProvider<?> buildDefaultArgumentProvider(Class<?> cls, Method method, Parameter parameter) {
         if (parameter.isAnnotationPresent(GraphQLArgument.class)) {
-            return new GraphQLArgumentProvider(cls, method, parameter, instanceFactory);
+            return new GraphQLArgumentProvider(cls, method, parameter, instanceFactory, argumentConverters);
         } else if (parameter.isAnnotationPresent(GraphQLEnvironment.class)) {
             return new GraphQLEnvironmentProvider(parameter.getAnnotation(GraphQLEnvironment.class));
         } else if (parameter.getType().equals(DataFetchingEnvironment.class)) {

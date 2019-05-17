@@ -33,7 +33,7 @@ public class InterfaceTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void resolveClass() {
         InterfaceTypeResolver interfaceResolver = new InterfaceTypeResolver(instanceFactory);
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(InterfaceImpl.class, interfaceResolver, objectResolver, scalarResolver))

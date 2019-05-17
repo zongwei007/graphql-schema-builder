@@ -24,7 +24,7 @@ public class UnionTypeResolverTest extends BasicTypeResolverTest {
     public void resolve() {
         DirectiveTypeResolver directiveResolver = new DirectiveTypeResolver();
         InterfaceTypeResolver interfaceResolver = new InterfaceTypeResolver(instanceFactory);
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
         UnionTypeResolver unionResolver = new UnionTypeResolver(instanceFactory);
 

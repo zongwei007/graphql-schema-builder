@@ -9,8 +9,6 @@ import com.ltsoft.graphql.example.object.NormalObject;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import org.junit.Test;
 
-import java.util.Collections;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ObjectTypeResolverTest extends BasicTypeResolverTest {
@@ -19,7 +17,7 @@ public class ObjectTypeResolverTest extends BasicTypeResolverTest {
 
     @Test
     public void isSupport() {
-        ObjectTypeResolver resolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver resolver = new ObjectTypeResolver(instanceFactory);
 
         assertThat(resolver.isSupport(NormalObject.class)).isTrue();
         assertThat(resolver.isSupport(NormalInterface.class)).isFalse();
@@ -28,7 +26,7 @@ public class ObjectTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void normalObject() {
         DirectiveTypeResolver directiveResolver = new DirectiveTypeResolver();
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(NormalObject.class, directiveResolver, objectResolver, scalarResolver))
@@ -38,7 +36,7 @@ public class ObjectTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void argumentService() {
         InputObjectTypeResolver inputResolver = new InputObjectTypeResolver();
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(ArgumentService.class, inputResolver, objectResolver, scalarResolver))
@@ -48,7 +46,7 @@ public class ObjectTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void withGraphQLView() {
         InputObjectTypeResolver inputResolver = new InputObjectTypeResolver();
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(MutationService.class, inputResolver, objectResolver, scalarResolver))
@@ -58,7 +56,7 @@ public class ObjectTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void generic() {
         InputObjectTypeResolver inputResolver = new InputObjectTypeResolver();
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(GenericServiceImpl.class, inputResolver, objectResolver, scalarResolver))

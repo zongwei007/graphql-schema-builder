@@ -17,7 +17,8 @@ public class ExtensionTypeResolverTest extends BasicTypeResolverTest {
     public void isSupport() {
         assertThat(new InputObjectTypeResolver().isSupport(MutationInputObjectExtension.class)).isTrue();
         assertThat(new InterfaceTypeResolver(instanceFactory).isSupport(NormalInterfaceExtension.class)).isTrue();
-        assertThat(new ObjectTypeResolver(instanceFactory, Collections.emptyList()).isSupport(NormalInterfaceImplExtension.class)).isTrue();
+        assertThat(new ObjectTypeResolver(instanceFactory)
+                .isSupport(NormalInterfaceImplExtension.class)).isTrue();
         assertThat(new EnumTypeResolver().isSupport(EnumObjectExtension.class)).isTrue();
         assertThat(new UnionTypeResolver(instanceFactory).isSupport(UnionObjectWithExtension.class)).isTrue();
     }
@@ -25,7 +26,7 @@ public class ExtensionTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void resolveInput() {
         InputObjectTypeResolver inputResolver = new InputObjectTypeResolver();
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(MutationInputObjectExtension.class, inputResolver, objectResolver, scalarResolver))
@@ -44,7 +45,7 @@ public class ExtensionTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void testObject() {
         InterfaceTypeResolver interfaceResolver = new InterfaceTypeResolver(instanceFactory);
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(NormalInterfaceImplExtension.class, interfaceResolver, objectResolver, scalarResolver))
@@ -63,7 +64,7 @@ public class ExtensionTypeResolverTest extends BasicTypeResolverTest {
     public void testUnion() {
         DirectiveTypeResolver directiveResolver = new DirectiveTypeResolver();
         InterfaceTypeResolver interfaceResolver = new InterfaceTypeResolver(instanceFactory);
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
         UnionTypeResolver unionResolver = new UnionTypeResolver(instanceFactory);
 

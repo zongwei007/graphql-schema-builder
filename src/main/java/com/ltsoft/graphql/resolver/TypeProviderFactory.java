@@ -1,9 +1,6 @@
 package com.ltsoft.graphql.resolver;
 
-import com.ltsoft.graphql.ArgumentProviderFactory;
-import com.ltsoft.graphql.InstanceFactory;
-import com.ltsoft.graphql.TypeProvider;
-import com.ltsoft.graphql.TypeResolver;
+import com.ltsoft.graphql.*;
 import com.ltsoft.graphql.impl.DefaultInstanceFactory;
 import com.ltsoft.graphql.provider.TypeNameProvider;
 import com.ltsoft.graphql.scalars.ScalarTypeRepository;
@@ -30,6 +27,7 @@ public final class TypeProviderFactory {
     private final List<TypeResolver<?>> typeResolvers = new ArrayList<>();
 
     private List<ArgumentProviderFactory<?>> argumentProviderFactories = Collections.emptyList();
+    private List<ArgumentConverter<?>> argumentConverters = Collections.emptyList();
     private InstanceFactory instanceFactory = new DefaultInstanceFactory();
 
     public void addClass(Class<?> type) {
@@ -47,8 +45,12 @@ public final class TypeProviderFactory {
         Collections.addAll(typeResolvers, resolvers);
     }
 
-    public void setArgumentFactories(List<ArgumentProviderFactory<?>> factories) {
+    public void setArgumentProviderFactories(List<ArgumentProviderFactory<?>> factories) {
         this.argumentProviderFactories = requireNonNull(factories);
+    }
+
+    public void setArgumentConverters(List<ArgumentConverter<?>> argumentConverters) {
+        this.argumentConverters = argumentConverters;
     }
 
     public void setInstanceFactory(InstanceFactory instanceFactory) {
@@ -72,7 +74,7 @@ public final class TypeProviderFactory {
         resolvers.add(new EnumTypeResolver());
         resolvers.add(new InputObjectTypeResolver());
         resolvers.add(new InterfaceTypeResolver(instanceFactory));
-        resolvers.add(new ObjectTypeResolver(instanceFactory, argumentProviderFactories));
+        resolvers.add(new ObjectTypeResolver(instanceFactory, argumentProviderFactories, argumentConverters));
         resolvers.add(new ScalarTypeResolver());
         resolvers.add(new UnionTypeResolver(instanceFactory));
         return resolvers;

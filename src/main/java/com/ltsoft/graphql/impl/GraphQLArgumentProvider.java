@@ -4,6 +4,7 @@ import com.google.common.base.CaseFormat;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.reflect.TypeToken;
+import com.ltsoft.graphql.ArgumentConverter;
 import com.ltsoft.graphql.InstanceFactory;
 import graphql.schema.DataFetchingEnvironment;
 
@@ -11,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -23,15 +25,26 @@ public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
             .build();
 
     private final InstanceFactory instanceFactory;
+    private final List<ArgumentConverter<?>> converters;
 
-    public GraphQLArgumentProvider(Class<?> cls, Method method, Parameter parameter, InstanceFactory instanceFactory) {
+    public GraphQLArgumentProvider(Class<?> cls, Method method, Parameter parameter, InstanceFactory instanceFactory, List<ArgumentConverter<?>> converters) {
         super(cls, method, parameter);
         this.instanceFactory = instanceFactory;
+        this.converters = converters;
     }
 
     @Override
     @SuppressWarnings("UnstableApiUsage")
     protected <E> E toBean(Map<String, Object> source, TypeToken<E> type, DataFetchingEnvironment environment) {
+        Optional<ArgumentConverter<?>> converter = converters.stream()
+                .filter(ele -> ele.isSupport(type.getRawType()))
+                .findFirst();
+
+        if (converter.isPresent()) {
+            //noinspection unchecked
+            return converter.map(ele -> (E) ele.convert(source, type.getRawType())).orElse(null);
+        }
+
         Object bean = instanceFactory.provide(type.getRawType());
 
         try {

@@ -23,7 +23,7 @@ public class InputObjectTypeResolverTest extends BasicTypeResolverTest {
     @Test
     public void resolve() {
         InputObjectTypeResolver inputResolver = new InputObjectTypeResolver();
-        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory, Collections.emptyList());
+        ObjectTypeResolver objectResolver = new ObjectTypeResolver(instanceFactory);
         ScalarTypeResolver scalarResolver = new ScalarTypeResolver();
 
         assertThat(printDefinition(MutationInputObject.class, inputResolver, objectResolver, scalarResolver))
