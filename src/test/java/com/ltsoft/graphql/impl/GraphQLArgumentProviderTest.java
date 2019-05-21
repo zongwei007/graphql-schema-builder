@@ -1,12 +1,10 @@
 package com.ltsoft.graphql.impl;
 
 import com.google.common.collect.ImmutableMap;
-import com.ltsoft.graphql.ArgumentConverter;
 import com.ltsoft.graphql.example.object.ArgumentService;
 import com.ltsoft.graphql.example.object.MutationObject;
 import graphql.schema.DataFetchingEnvironment;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -14,9 +12,8 @@ import java.time.Year;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class GraphQLArgumentProviderTest {
 
@@ -209,37 +206,13 @@ public class GraphQLArgumentProviderTest {
         assertThat((Set) argument).containsOnly("a", "b");
     }
 
-    @Test
-    public void converter() throws Exception {
-        Method method = ArgumentService.class.getMethod("helloAsObj", MutationObject.class);
-        Parameter parameter = method.getParameters()[0];
-
-        Object result = new MutationObject();
-
-        //noinspection unchecked
-        ArgumentConverter<Object> converter = mock(ArgumentConverter.class);
-        when(converter.isSupport(eq(MutationObject.class))).thenReturn(true);
-        when(converter.convert(Mockito.anyMap(), eq(MutationObject.class))).thenReturn(result);
-
-        GraphQLArgumentProvider provider = new GraphQLArgumentProvider(
-                ArgumentService.class, method, parameter, new DefaultInstanceFactory(), Collections.singletonList(converter));
-
-        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
-        when(environment.getArguments()).thenReturn(ImmutableMap.of());
-
-        Object argument = provider.provide(environment);
-
-        assertThat(provider.isGenericType()).isTrue();
-        assertThat(argument).isInstanceOf(MutationObject.class).isEqualTo(result);
-
-        verify(converter, atLeastOnce()).isSupport(any());
-        verify(converter).convert(anyMap(), any());
-    }
-
     private GraphQLArgumentProvider buildArgumentProvider(String name, Class<?>... argumentType) throws NoSuchMethodException {
         Method method = ArgumentService.class.getMethod(name, argumentType);
         Parameter parameter = method.getParameters()[0];
 
-        return new GraphQLArgumentProvider(ArgumentService.class, method, parameter, new DefaultInstanceFactory(), Collections.emptyList());
+        return new GraphQLArgumentProvider(ArgumentService.class, parameter, Arrays.asList(
+                new ArrayArgumentConverter(), new CollectionArgumentConverter(),
+                new ScalarTypeArgumentConverter(), new BeanArgumentConverter(new DefaultInstanceFactory())
+        ));
     }
 }

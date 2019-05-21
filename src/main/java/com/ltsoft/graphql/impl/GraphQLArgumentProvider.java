@@ -1,100 +1,77 @@
 package com.ltsoft.graphql.impl;
 
-import com.google.common.base.CaseFormat;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.ArgumentConverter;
-import com.ltsoft.graphql.InstanceFactory;
+import com.ltsoft.graphql.ArgumentProvider;
+import com.ltsoft.graphql.annotations.GraphQLType;
+import com.ltsoft.graphql.annotations.GraphQLTypeReference;
 import graphql.schema.DataFetchingEnvironment;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
-public class GraphQLArgumentProvider extends BasicArgumentProvider<Object> {
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.ltsoft.graphql.resolver.ResolveUtil.*;
+import static java.util.Objects.requireNonNull;
 
-    private static Cache<String, Optional<Method>> METHOD_CACHE = CacheBuilder.newBuilder()
-            .expireAfterAccess(1, TimeUnit.HOURS)
-            .build();
+@SuppressWarnings("UnstableApiUsage")
+public class GraphQLArgumentProvider implements ArgumentProvider<Object> {
 
-    private final InstanceFactory instanceFactory;
+    private final TypeToken<?> typeToken;
+    private final String argumentName;
     private final List<ArgumentConverter<?>> converters;
+    private boolean isGenericType;
 
-    public GraphQLArgumentProvider(Class<?> cls, Method method, Parameter parameter, InstanceFactory instanceFactory, List<ArgumentConverter<?>> converters) {
-        super(cls, method, parameter);
-        this.instanceFactory = instanceFactory;
+    public GraphQLArgumentProvider(Class<?> cls, Parameter parameter, List<ArgumentConverter<?>> converters) {
+        checkArgument(parameter.isAnnotationPresent(com.ltsoft.graphql.annotations.GraphQLArgument.class));
+
+        this.typeToken = resolveGenericType(cls, parameter.getParameterizedType());
+        this.argumentName = resolveArgumentName(parameter);
+
+        Class<?> rawType = typeToken.getRawType();
+        //非 List 类型，且未声明类型引用
+        if (!isGraphQLList(typeToken) && !parameter.isAnnotationPresent(GraphQLTypeReference.class)) {
+            //非枚举且直接定义为 GraphQLType 的参数，才能识别为泛参数
+            if (!rawType.isEnum() && rawType.isAnnotationPresent(GraphQLType.class)) {
+                this.isGenericType = true;
+            }
+        }
+
         this.converters = converters;
     }
 
     @Override
-    @SuppressWarnings("UnstableApiUsage")
-    protected <E> E toBean(Map<String, Object> source, TypeToken<E> type, DataFetchingEnvironment environment) {
-        Optional<ArgumentConverter<?>> converter = converters.stream()
-                .filter(ele -> ele.isSupport(type.getRawType()))
-                .findFirst();
-
-        if (converter.isPresent()) {
-            //noinspection unchecked
-            return converter.map(ele -> (E) ele.convert(source, type.getRawType())).orElse(null);
+    public Object provide(DataFetchingEnvironment environment) {
+        if (isGenericType) {
+            return convertTo(environment.getArguments(), typeToken);
         }
 
-        Object bean = instanceFactory.provide(type.getRawType());
-
-        try {
-            for (Map.Entry<String, Object> entry : source.entrySet()) {
-                String key = entry.getKey();
-                Object val = entry.getValue();
-
-                Method method = findSetter(type, key, val);
-
-                if (method == null) {
-                    continue;
-                }
-
-                TypeToken<?> paramType = TypeToken.of(method.getParameters()[0].getParameterizedType());
-
-                method.invoke(bean, toTypeOf(val, paramType, environment));
-            }
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new IllegalStateException(String.format("Convert data to %s fail", type.getRawType().getName()), e);
-        }
-
-        //noinspection unchecked
-        return (E) bean;
+        return convertTo(environment.getArgument(requireNonNull(argumentName)), typeToken);
     }
 
-    @SuppressWarnings("UnstableApiUsage")
-    private Method findSetter(TypeToken<?> type, String key, Object val) {
-        Class<?> rawType = type.getRawType();
-        String methodName = "set" + CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, key);
-
-        try {
-            return METHOD_CACHE.get(rawType.getName() + "#" + key, () -> {
-                try {
-                    if (val != null) {
-                        return Optional.of(rawType.getMethod(methodName, val.getClass()));
-                    } else {
-                        return findSetterByName(rawType, methodName);
-                    }
-                } catch (NoSuchMethodException e) {
-                    return findSetterByName(rawType, methodName);
-                }
-            }).orElse(null);
-        } catch (ExecutionException e) {
-            throw new IllegalStateException(String.format("Find method '%s' of class '%s' fail.", methodName, rawType.getName()), e);
+    @SuppressWarnings("unchecked")
+    private Object convertTo(Object argument, TypeToken<?> type) {
+        if (argument == null) {
+            return null;
         }
+
+        TypeToken<Object> typeToken = (TypeToken<Object>) type;
+
+        return converters.stream()
+                .filter(ele -> ele.isSupport(TypeToken.of(argument.getClass()), type))
+                .findFirst()
+                .map(ele -> (ArgumentConverter<Object>) ele)
+                .map(ele -> ele.convert(argument, typeToken, this::convertTo))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("can not cast '%s' to '%s'", argument.getClass().getSimpleName(), type.toString())
+                ));
     }
 
-    private Optional<Method> findSetterByName(Class<?> type, String methodName) {
-        return Arrays.stream(type.getMethods())
-                .filter(method -> methodName.equals(method.getName()))
-                .findFirst();
+    String getArgumentName() {
+        return argumentName;
+    }
+
+    boolean isGenericType() {
+        return isGenericType;
     }
 }

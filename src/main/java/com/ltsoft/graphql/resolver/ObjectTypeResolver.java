@@ -1,11 +1,10 @@
 package com.ltsoft.graphql.resolver;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.reflect.TypeToken;
 import com.ltsoft.graphql.*;
 import com.ltsoft.graphql.annotations.*;
-import com.ltsoft.graphql.impl.GraphQLArgumentProvider;
-import com.ltsoft.graphql.impl.GraphQLEnvironmentProvider;
-import com.ltsoft.graphql.impl.ServiceDataFetcher;
+import com.ltsoft.graphql.impl.*;
 import graphql.language.Definition;
 import graphql.language.ObjectTypeDefinition;
 import graphql.language.TypeName;
@@ -35,18 +34,20 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     private final List<ArgumentProviderFactory<?>> argumentFactories;
     private final List<ArgumentConverter<?>> argumentConverters;
 
+    @SuppressWarnings("WeakerAccess")
     public ObjectTypeResolver(InstanceFactory instanceFactory) {
         this(instanceFactory, Collections.emptyList(), Collections.emptyList());
     }
 
     @SuppressWarnings("WeakerAccess")
-    protected ObjectTypeResolver(InstanceFactory instanceFactory,
-                                 List<ArgumentProviderFactory<?>> argumentFactories,
-                                 List<ArgumentConverter<?>> argumentConverters
-    ) {
+    protected ObjectTypeResolver(InstanceFactory instanceFactory, List<ArgumentProviderFactory<?>> argumentFactories, List<ArgumentConverter<?>> argumentConverters) {
         this.instanceFactory = instanceFactory;
         this.argumentFactories = argumentFactories;
-        this.argumentConverters = argumentConverters;
+        this.argumentConverters = ImmutableList.<ArgumentConverter<?>>builder()
+                .addAll(argumentConverters)
+                .add(new ArrayArgumentConverter(), new CollectionArgumentConverter())
+                .add(new ScalarTypeArgumentConverter(), new BeanArgumentConverter(instanceFactory))
+                .build();
     }
 
     @Override
@@ -147,13 +148,13 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
                             .map(ele -> ele.build(cls, method, parameter))
                             .orElse(null);
                     //这里直接使用 orElse 会触发编译错误
-                    return provider != null ? provider : buildDefaultArgumentProvider(cls, method, parameter);
+                    return provider != null ? provider : buildDefaultArgumentProvider(cls, parameter);
                 }).collect(Collectors.toList());
     }
 
-    private ArgumentProvider<?> buildDefaultArgumentProvider(Class<?> cls, Method method, Parameter parameter) {
+    private ArgumentProvider<?> buildDefaultArgumentProvider(Class<?> cls, Parameter parameter) {
         if (parameter.isAnnotationPresent(GraphQLArgument.class)) {
-            return new GraphQLArgumentProvider(cls, method, parameter, instanceFactory, argumentConverters);
+            return new GraphQLArgumentProvider(cls, parameter, argumentConverters);
         } else if (parameter.isAnnotationPresent(GraphQLEnvironment.class)) {
             return new GraphQLEnvironmentProvider(parameter.getAnnotation(GraphQLEnvironment.class));
         } else if (parameter.getType().equals(DataFetchingEnvironment.class)) {

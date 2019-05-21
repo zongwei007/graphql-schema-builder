@@ -10,7 +10,6 @@ import org.junit.Test;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,7 +61,10 @@ public class GraphQLGenericArgumentProviderTest {
 
         Parameter parameter = method.getParameters()[0];
 
-        return new GraphQLArgumentProvider(GenericServiceImpl.class, method, parameter, new DefaultInstanceFactory(), Collections.emptyList());
+        return new GraphQLArgumentProvider(GenericServiceImpl.class, parameter, Arrays.asList(
+                new CollectionArgumentConverter(), new ScalarTypeArgumentConverter(),
+                new BeanArgumentConverter(new DefaultInstanceFactory())
+        ));
     }
 
 }
