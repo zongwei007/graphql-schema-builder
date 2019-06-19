@@ -109,7 +109,7 @@ public class ObjectTypeResolver extends BasicTypeResolver<ObjectTypeDefinition> 
     private boolean isGraphQLField(FieldInformation info) {
         Class<?> declaringClass = info.getDeclaringClass();
 
-        return info.isNotIgnore() && (hasGraphQLAnnotation(declaringClass, GraphQLType.class)
+        return (hasGraphQLAnnotation(declaringClass, GraphQLType.class)
                 || hasGraphQLAnnotation(declaringClass, GraphQLInterface.class)
                 || declaringClass.isAnnotationPresent(GraphQLSupperClass.class)
         );

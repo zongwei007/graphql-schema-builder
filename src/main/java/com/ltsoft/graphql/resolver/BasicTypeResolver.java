@@ -92,8 +92,9 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
     @SuppressWarnings("WeakerAccess")
     protected List<FieldDefinition> getFieldDefinitions(Class<?> cls, Predicate<FieldInformation> filter, Function<java.lang.reflect.Type, TypeProvider<?>> resolver) {
         return resolveFields(cls)
-                .filter(filter)
+                .filter(FieldInformation::isNotIgnore)
                 .filter(FieldInformation::isGetter)
+                .filter(filter)
                 .map(info -> info.getFieldDefinition(resolver))
                 .collect(new FieldDefinitionCollector<>(FieldDefinition::getName));
     }
