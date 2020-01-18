@@ -24,7 +24,7 @@ public class RootQueryService {
 
     @GraphQLDataFetcher
     public String getFieldTypeName(DataFetchingEnvironment environment) {
-        return environment.getFieldType().getName();
+        return environment.getField().getName();
     }
 
     @GraphQLDataFetcher

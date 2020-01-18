@@ -1,3 +1,17 @@
+"Directs the executor to include this field or fragment only when the `if` argument is true"
+directive @include(
+    "Included when true."
+    if: Boolean!
+  ) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+
+"Directs the executor to skip this field or fragment when the `if`'argument is true."
+directive @skip(
+    "Skipped when true."
+    if: Boolean!
+  ) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+
+directive @deprecated(reason: String) on FIELD_DEFINITION
+
 interface NormalInterface {
   info: String
 }
@@ -9,7 +23,7 @@ type Normal {
   barList: [String]
   "GraphQL count field"
   count(
-    #A cnd argument
+    "A cnd argument"
     cnd: String! = "1"
   ): Int!
   filterDateTimes(args: [DateTime]!): [DateTime]!

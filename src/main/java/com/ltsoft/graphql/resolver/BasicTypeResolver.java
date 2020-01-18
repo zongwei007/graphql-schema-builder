@@ -135,6 +135,7 @@ public abstract class BasicTypeResolver<T extends Definition> implements TypeRes
 
             Arrays.stream(builderType.getMethods())
                     .filter(method -> method.getReturnType().equals(builderType))
+                    .filter(method -> method.getParameterCount() == 1)
                     .forEach(setter -> {
                         String setterName = setter.getName();
                         String getterName = "get" + setterName.substring(0, 1).toUpperCase() + setterName.substring(1);
