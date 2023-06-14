@@ -11,7 +11,7 @@
     <properties>
         <graphql-java.version>14.0</graphql-java.version>
         <graphql-java-extended-scalars.version>1.0</graphql-java-extended-scalars.version>
-        <guava.version>29.0-jre</guava.version>
+        <guava.version>32.0.0-jre</guava.version>
         <spf4j-slf4j-test.version>8.6.3</spf4j-slf4j-test.version>
         <assertj-core.version>3.9.1</assertj-core.version>
         <mockito-core.version>2.22.0</mockito-core.version>
